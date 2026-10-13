@@ -1,0 +1,13 @@
+AgentOS Session Core
+Copyright 2026 Leslie-ller
+
+This distribution contains extensions to Codeg by xintaofei and contributors.
+Upstream: https://github.com/xintaofei/codeg
+Base revision: 98035964c0f3811dc80a5e9291b89cb6c0570fa0 (0.33.0).
+Codeg and this extension are distributed under Apache License 2.0.
+
+The files in overlay/ are session-core additions. The files changed by
+patches/session-core.patch contain modifications for logical conversation
+handoff, message provenance, runtime retention, and owned session profiles.
+The exact changed paths are recorded in the patch. Unrelated local extensions
+are excluded. Upstream functionality is not claimed as original work.

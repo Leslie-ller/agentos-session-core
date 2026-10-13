@@ -1,0 +1,53 @@
+name: Session core
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: session-core-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/prepare.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: workspace/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: workspace
+      - run: pnpm test src/contexts/acp-connections-context.test.tsx src/lib/conversation-handoff.test.ts src/hooks/use-conversation-handoff-sync.test.ts src/components/message/turn-stats.test.tsx
+        working-directory: workspace
+      - run: pnpm build
+        working-directory: workspace
+  backend:
+    runs-on: macos-latest
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/prepare.py
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: workspace/src-tauri
+      - run: cargo check --locked --no-default-features --features server-bin --bin codeg-server
+        working-directory: workspace/src-tauri
+      - run: cargo test --locked --no-default-features --features server-bin,test-utils --test conversation_handoff
+        working-directory: workspace/src-tauri

@@ -1,0 +1,1795 @@
+diff --git a/src-tauri/src/acp/agent_process.rs b/src-tauri/src/acp/agent_process.rs
+index 3710505..b2a58b5 100644
+--- a/src-tauri/src/acp/agent_process.rs
++++ b/src-tauri/src/acp/agent_process.rs
+@@ -388,6 +388,9 @@ impl AcpAgent {
+                     command.args(&stdio.args);
+                     command
+                 };
++                for key in super::session_profiles::AMBIENT_CREDENTIAL_KEYS {
++                    cmd.env_remove(key);
++                }
+                 for env_var in &stdio.env {
+                     // codeg convention: an empty value means "ensure this var is
+                     // ABSENT from the child" (strip an inherited value) rather
+diff --git a/src-tauri/src/acp/connection.rs b/src-tauri/src/acp/connection.rs
+index 7b944cd..452bbba 100644
+--- a/src-tauri/src/acp/connection.rs
++++ b/src-tauri/src/acp/connection.rs
+@@ -2305,6 +2305,9 @@ pub async fn spawn_agent_connection(
+     delegation_injection: Option<DelegationInjection>,
+     terminal_shell_config: TerminalShellRuntimeConfig,
+ ) -> Result<tokio::sync::oneshot::Receiver<()>, AcpError> {
++    let mut runtime_env = runtime_env;
++    crate::acp::session_profiles::apply(agent_type, &mut runtime_env)?;
++
+     // Create the authoritative session state up front. Subsequent emit_with_state
+     // calls write through this state and increment its seq counter so the first
+     // event the frontend sees has seq=1, not the placeholder 0 from Phase 0.
+diff --git a/src-tauri/src/acp/error.rs b/src-tauri/src/acp/error.rs
+index 9184015..194a0d1 100644
+--- a/src-tauri/src/acp/error.rs
++++ b/src-tauri/src/acp/error.rs
+@@ -19,6 +19,9 @@ pub enum AcpError {
+     /// message queue above the input box instead of surfacing an error.
+     #[error("turn already in progress for this connection")]
+     TurnInProgress,
++    /// Another client changed the logical conversation binding.
++    #[error("{0}")]
++    ConversationChanged(String),
+     /// Live feedback was submitted while no turn was in flight. Feedback only
+     /// makes sense while the agent is working (it is pulled mid-turn via the
+     /// `check_user_feedback` MCP tool); with no active turn there is nothing to
+@@ -134,6 +137,7 @@ impl AcpError {
+             Self::ProbeTimedOut => Some("probe_timed_out"),
+             Self::ProcessExited => Some("process_exited"),
+             Self::TurnInProgress => Some("turn_in_progress"),
++            Self::ConversationChanged(_) => Some("conversation_changed"),
+             Self::NoActiveTurn => Some("no_active_turn"),
+             Self::FeedbackDisabled => Some("feedback_disabled"),
+             Self::InvalidFeedback(_) => Some("invalid_feedback"),
+diff --git a/src-tauri/src/acp/lifecycle.rs b/src-tauri/src/acp/lifecycle.rs
+index fc4bbad..ba5d9e9 100644
+--- a/src-tauri/src/acp/lifecycle.rs
++++ b/src-tauri/src/acp/lifecycle.rs
+@@ -193,6 +193,22 @@ pub(crate) async fn handle_event(
+     envelope: &EventEnvelope,
+     broker: Option<&Arc<DelegationBroker>>,
+ ) -> Result<(), DbError> {
++    // Serialize lifecycle writes with handoff, then re-check retirement. An
++    // event queued by the old runtime must never re-bind or cancel the new one.
++    let state = manager.get_state(&envelope.connection_id).await;
++    let id = match &state {
++        Some(s) => s.read().await.conversation_id,
++        None => None,
++    };
++    let _guard = match id {
++        Some(id) => Some(manager.lock_conversation(id).await),
++        None => None,
++    };
++    if let Some(s) = state {
++        if s.read().await.retired_for_handoff {
++            return Ok(());
++        }
++    }
+     match &envelope.payload {
+         // NOTE: parent-side `delegate_to_agent` tool_call_id capture used to
+         // live here (a `ToolCall` arm). It now runs in the dispatcher loop via
+@@ -528,6 +544,10 @@ async fn handle_terminal_event(
+     let Some(entry) = cache.remove(connection_id) else {
+         return Ok(());
+     };
++    let state_guard = entry.state.read().await;
++    if state_guard.retired_for_handoff {
++        return Ok(());
++    }
+     let cid = entry.conversation_id;
+     let changed = conversation_service::update_status_if(
+         db_conn,
+@@ -536,6 +556,7 @@ async fn handle_terminal_event(
+         ConversationStatus::Cancelled,
+     )
+     .await?;
++    drop(state_guard);
+     if !changed {
+         return Ok(());
+     }
+diff --git a/src-tauri/src/acp/manager.rs b/src-tauri/src/acp/manager.rs
+index 6c81c56..4b0695d 100644
+--- a/src-tauri/src/acp/manager.rs
++++ b/src-tauri/src/acp/manager.rs
+@@ -394,12 +394,15 @@ const DRAIN_GRACE: std::time::Duration = std::time::Duration::from_secs(30);
+ /// ago that it cannot be a spawn still in flight.
+ fn prune_reaped(draining: &mut DrainingChildren) {
+     draining.retain(|c| {
+-        c.pid.load(std::sync::atomic::Ordering::SeqCst) != 0
+-            || c.parked_at.elapsed() < DRAIN_GRACE
++        c.pid.load(std::sync::atomic::Ordering::SeqCst) != 0 || c.parked_at.elapsed() < DRAIN_GRACE
+     });
+ }
+ 
++#[path = "handoff.rs"]
++mod handoff;
++
+ pub struct ConnectionManager {
++    conversation_locks: Arc<Mutex<HashMap<i32, Arc<Mutex<()>>>>>,
+     pub(crate) connections: Arc<Mutex<HashMap<String, AgentConnection>>>,
+     /// Connections whose teardown was requested but whose child process has
+     /// not been reaped yet.
+@@ -504,6 +507,7 @@ impl Default for ConnectionManager {
+ impl ConnectionManager {
+     pub fn new() -> Self {
+         Self {
++            conversation_locks: Arc::new(Mutex::new(HashMap::new())),
+             connections: Arc::new(Mutex::new(HashMap::new())),
+             external_restore_lock: Arc::new(tokio::sync::RwLock::new(())),
+             draining: Arc::new(Mutex::new(Vec::new())),
+@@ -521,6 +525,7 @@ impl ConnectionManager {
+     /// Returns a shallow clone sharing the same underlying connection map.
+     pub fn clone_ref(&self) -> Self {
+         Self {
++            conversation_locks: self.conversation_locks.clone(),
+             connections: self.connections.clone(),
+             external_restore_lock: self.external_restore_lock.clone(),
+             draining: self.draining.clone(),
+@@ -574,6 +579,7 @@ impl ConnectionManager {
+     #[cfg(test)]
+     fn with_spawn_handshake_timeout(timeout: Duration) -> Self {
+         Self {
++            conversation_locks: Arc::new(Mutex::new(HashMap::new())),
+             connections: Arc::new(Mutex::new(HashMap::new())),
+             external_restore_lock: Arc::new(tokio::sync::RwLock::new(())),
+             draining: Arc::new(Mutex::new(Vec::new())),
+@@ -1021,6 +1027,11 @@ impl ConnectionManager {
+             .map_err(|_| AcpError::ProcessExited)?;
+         {
+             let mut s = state_arc.write().await;
++            if s.retired_for_handoff {
++                return Err(AcpError::protocol(
++                    "Conversation switched to another agent; reload",
++                ));
++            }
+             if s.turn_in_flight {
+                 // Names the gate, not just the outcome: the linked path checks
+                 // the same flag once before its side effects and again here, and
+@@ -1160,6 +1171,22 @@ impl ConnectionManager {
+             ));
+         }
+ 
++        // Serialize admission with cross-agent handoff, including unlinked
++        // connections opened by another client before the switch completed.
++        let logical_id = match conversation_id {
++            Some(id) => Some(id),
++            None => match self.get_state(conn_id).await {
++                Some(state) => state.read().await.conversation_id,
++                None => None,
++            },
++        };
++        let _conversation_guard = match logical_id {
++            Some(id) => Some(self.lock_conversation(id).await),
++            None => None,
++        };
++        let handoff_prefix = self
++            .prepare_handoff_prompt(&db.conn, conn_id, logical_id)
++            .await?;
+         // Acquire the per-connection prompt lock for the entire link-check
+         // + DB write + emit + cmd_tx.send sequence. Two concurrent prompts
+         // (multiple browser tabs of the same conversation; chat-channel
+@@ -1568,10 +1595,12 @@ impl ConnectionManager {
+         // for a prompt that never reached the agent, so without this the
+         // lifecycle subscriber's PendingReview write also never fires and the
+         // row would be stuck until a follow-up `send_prompt_linked` re-flipped it.
+-        match self
+-            .send_prompt_inner(conn_id, blocks, user_message)
+-            .await
+-        {
++        // The UI echo and title above describe only the new user message.
++        // Native transcripts retain this prefix; the detail reader removes it.
++        if let Some(prefix) = handoff_prefix {
++            blocks.insert(0, PromptInputBlock::Text { text: prefix });
++        }
++        match self.send_prompt_inner(conn_id, blocks, user_message).await {
+             Ok(()) => {
+                 // The prompt reached the agent: surface it to the chat-channel
+                 // "user message" event feed. Notification-only — never gates the
+@@ -1944,6 +1973,27 @@ impl ConnectionManager {
+         // back to `Cancelled`.
+         let prompt_lock = self.clone_prompt_lock(conn_id).await?;
+         let prompt_guard = prompt_lock.lock_owned().await;
++        if state_arc.read().await.retired_for_handoff {
++            return Err(AcpError::protocol(
++                "This connection was retired by an agent switch",
++            ));
++        }
++        let logical_id = state_arc
++            .read()
++            .await
++            .conversation_id
++            .or(link_conversation_id);
++        if let Some(id) = logical_id {
++            if crate::db::service::conversation_handoff::load(&db.conn, id)
++                .await
++                .map_err(|e| AcpError::protocol(e.to_string()))?
++                .is_some()
++            {
++                return Err(AcpError::protocol(
++                    "Fork is not yet supported across an agent handoff",
++                ));
++            }
++        }
+ 
+         // Link the conversation row on demand, under the prompt lock so it
+         // can't race a concurrent first prompt. A conversation opened from
+diff --git a/src-tauri/src/acp/mod.rs b/src-tauri/src/acp/mod.rs
+index 524321b..a675867 100644
+--- a/src-tauri/src/acp/mod.rs
++++ b/src-tauri/src/acp/mod.rs
+@@ -41,8 +41,9 @@ pub mod remote_registry;
+ pub mod scratch_dir;
+ pub mod service_error;
+ pub mod session_info;
+-pub mod session_title;
++pub mod session_profiles;
+ pub mod session_state;
++pub mod session_title;
+ pub mod stderr_tail;
+ pub mod temp_reclaim;
+ pub mod terminal_runtime;
+diff --git a/src-tauri/src/acp/session_state.rs b/src-tauri/src/acp/session_state.rs
+index 94b60d0..4fb3411 100644
+--- a/src-tauri/src/acp/session_state.rs
++++ b/src-tauri/src/acp/session_state.rs
+@@ -611,6 +611,8 @@ pub struct SessionState {
+     /// seeing success. Not serialized: it is a connection-loop liveness flag,
+     /// not part of the client-visible snapshot.
+     pub turn_in_flight: bool,
++    /// This runtime no longer owns the logical conversation after a handoff.
++    pub retired_for_handoff: bool,
+ 
+     /// Whether the open turn is one the AGENT started on its own (Grok's
+     /// follow-up to a background workflow), which the idle loop renders as a
+@@ -736,6 +738,7 @@ impl SessionState {
+             pending_user_message: None,
+             pending_user_message_started_at: None,
+             turn_in_flight: false,
++            retired_for_handoff: false,
+             agent_initiated_turn: false,
+             turns_completed: 0,
+             last_turn_ended_abnormally: false,
+diff --git a/src-tauri/src/app_error.rs b/src-tauri/src/app_error.rs
+index 468c874..b94a4ca 100644
+--- a/src-tauri/src/app_error.rs
++++ b/src-tauri/src/app_error.rs
+@@ -137,6 +137,8 @@ pub enum AppErrorCode {
+     /// connection (a second, concurrent send). Maps to HTTP 409 — an expected,
+     /// recoverable condition in multi-client co-control, not a server fault.
+     TurnInProgress,
++    /// Stale conversation binding during a concurrent agent switch.
++    ConversationChanged,
+ }
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize, thiserror::Error)]
+diff --git a/src-tauri/src/bin/codeg_server.rs b/src-tauri/src/bin/codeg_server.rs
+index ccd649d..a4d2466 100644
+--- a/src-tauri/src/bin/codeg_server.rs
++++ b/src-tauri/src/bin/codeg_server.rs
+@@ -83,6 +83,10 @@ fn main() -> ExitCode {
+         .unwrap_or_else(|_| default_data_dir());
+     let resolved_data_dir = codeg_lib::git_credential::absolutize(&resolved_data_dir);
+     std::env::set_var("CODEG_DATA_DIR", &resolved_data_dir);
++    if let Err(err) = codeg_lib::acp::session_profiles::initialize() {
++        eprintln!("Agent profile initialization failed: {err}");
++        return ExitCode::FAILURE;
++    }
+ 
+     // Install the logging subscriber now that CODEG_DATA_DIR is pinned (the logs
+     // dir resolves from it). Doing it here — before the first server diagnostic
+diff --git a/src-tauri/src/commands/acp.rs b/src-tauri/src/commands/acp.rs
+index bb6fc62..3fd0306 100644
+--- a/src-tauri/src/commands/acp.rs
++++ b/src-tauri/src/commands/acp.rs
+@@ -2599,27 +2599,7 @@ fn home_dir_or_default() -> PathBuf {
+ }
+ 
+ fn codex_home_dir() -> PathBuf {
+-    let configured = std::env::var("CODEX_HOME").ok().and_then(|raw| {
+-        let trimmed = raw.trim();
+-        if trimmed.is_empty() {
+-            None
+-        } else {
+-            Some(trimmed.to_string())
+-        }
+-    });
+-
+-    match configured {
+-        Some(value) => {
+-            if value == "~" {
+-                home_dir_or_default()
+-            } else if let Some(remain) = value.strip_prefix("~/") {
+-                home_dir_or_default().join(remain)
+-            } else {
+-                PathBuf::from(value)
+-            }
+-        }
+-        None => home_dir_or_default().join(".codex"),
+-    }
++    crate::acp::session_profiles::codex_home()
+ }
+ 
+ /// Hermes config/data directory. Honors `HERMES_HOME`, defaults to `~/.hermes`.
+@@ -3729,16 +3709,33 @@ fn persist_codex_native_config_files(
+     codex_auth_json: Option<&str>,
+     codex_config_toml: Option<&str>,
+ ) -> Result<(), AcpError> {
++    let codex_home = codex_home_dir();
++    crate::acp::session_profiles::validate_codex_files(&codex_home)
++        .map_err(|e| AcpError::protocol(e.to_string()))?;
++    if let Some(raw) = codex_auth_json {
++        crate::acp::session_profiles::reject_shared_codex_auth(
++            raw,
++            &home_dir_or_default().join(".codex/auth.json"),
++        )
++        .map_err(|e| AcpError::protocol(e.to_string()))?;
++    }
+     if let Some(raw_toml) = codex_config_toml {
+-        toml::from_str::<toml::Table>(raw_toml)
++        let mut config = toml::from_str::<toml::Table>(raw_toml)
+             .map_err(|e| AcpError::protocol(format!("invalid codex config.toml: {e}")))?;
++        config.insert(
++            "cli_auth_credentials_store".into(),
++            toml::Value::String("file".into()),
++        );
+         let path = codex_config_toml_path();
+         if let Some(parent) = path.parent() {
+             fs::create_dir_all(parent)
+                 .map_err(|e| AcpError::protocol(format!("create codex directory failed: {e}")))?;
+         }
+-        fs::write(&path, raw_toml)
+-            .map_err(|e| AcpError::protocol(format!("write codex config.toml failed: {e}")))?;
++        fs::write(
++            &path,
++            toml::to_string(&config).map_err(|e| AcpError::protocol(e.to_string()))?,
++        )
++        .map_err(|e| AcpError::protocol(format!("write codex config.toml failed: {e}")))?;
+     }
+ 
+     if let Some(raw_auth) = codex_auth_json {
+@@ -3758,6 +3755,8 @@ fn persist_codex_native_config_files(
+             .map_err(|e| AcpError::protocol(format!("write codex auth.json failed: {e}")))?;
+     }
+ 
++    crate::acp::session_profiles::enforce_codex_auth_storage(&codex_home)
++        .map_err(|e| AcpError::protocol(e.to_string()))?;
+     Ok(())
+ }
+ 
+@@ -6252,11 +6251,13 @@ async fn antigravity_runtime_env(db: &AppDatabase) -> Result<BTreeMap<String, St
+         .await
+         .map_err(|e| AcpError::protocol(e.to_string()))?;
+     let local_config_json = load_agent_local_config_json(AgentType::Antigravity);
+-    Ok(build_runtime_env_from_setting(
++    let mut runtime_env = build_runtime_env_from_setting(
+         AgentType::Antigravity,
+         setting.as_ref(),
+         local_config_json.as_deref(),
+-    ))
++    );
++    crate::acp::session_profiles::apply(AgentType::Antigravity, &mut runtime_env)?;
++    Ok(runtime_env)
+ }
+ 
+ /// Start a browser-free Antigravity sign-in and hand back the link to open.
+@@ -8612,8 +8613,12 @@ fn reconcile_hermes_runtime_env_in(home: &Path) -> Result<(), AcpError> {
+ 
+ fn agent_local_config_path(agent_type: AgentType) -> Option<PathBuf> {
+     match agent_type {
+-        AgentType::ClaudeCode => Some(home_dir_or_default().join(".claude").join("settings.json")),
+-        AgentType::Gemini => Some(home_dir_or_default().join(".gemini").join("settings.json")),
++        AgentType::ClaudeCode => {
++            Some(crate::parsers::claude::resolve_claude_config_dir().join("settings.json"))
++        }
++        AgentType::Gemini => {
++            Some(crate::parsers::gemini::resolve_gemini_base_dir().join("settings.json"))
++        }
+         // Antigravity's ACP server keeps its own `settings.json` under
+         // `<GEMINI_HOME>/antigravity-acp/` — a DIFFERENT file from Gemini
+         // CLI's above, even though both trees default to `~/.gemini`. Exposing
+@@ -8621,9 +8626,9 @@ fn agent_local_config_path(agent_type: AgentType) -> Option<PathBuf> {
+         // `acp::connection::sync_antigravity_settings_file` at launch, which
+         // merges only `auth.type` and the `gcp` block and leaves every other
+         // key the user put there alone.
+-        AgentType::Antigravity => Some(
+-            crate::parsers::antigravity::resolve_antigravity_acp_dir().join("settings.json"),
+-        ),
++        AgentType::Antigravity => {
++            Some(crate::parsers::antigravity::resolve_antigravity_acp_dir().join("settings.json"))
++        }
+         AgentType::OpenCode => Some(resolve_opencode_config_path()),
+         // The CLI's live credential store, NOT the legacy `globalState.json`
+         // it migrates from once and then ignores — so "open config file" shows
+@@ -10911,6 +10916,7 @@ async fn build_runtime_env_for_agent(
+     data_dir: &Path,
+     allow_disabled: bool,
+ ) -> Result<BTreeMap<String, String>, AcpError> {
++    crate::acp::session_profiles::ensure_supported(agent_type)?;
+     let setting = agent_setting_service::get_by_agent_type(&db.conn, agent_type)
+         .await
+         .map_err(|e| AcpError::protocol(e.to_string()))?;
+@@ -10955,6 +10961,7 @@ async fn build_runtime_env_for_agent(
+         runtime_env.insert("OPENCLAW_RESET_SESSION".into(), "1".into());
+     }
+ 
++    crate::acp::session_profiles::apply(agent_type, &mut runtime_env)?;
+     Ok(runtime_env)
+ }
+ 
+@@ -20708,6 +20715,33 @@ model = "gpt"
+             Some(&setting),
+             Some(&serde_json::json!({ "apiProvider": "deepseek", "apiKey": "sk" }).to_string()),
+         );
+-        assert_eq!(env.get("CLINE_PROVIDER").map(String::as_str), Some("cline-pass"));
++        assert_eq!(
++            env.get("CLINE_PROVIDER").map(String::as_str),
++            Some("cline-pass")
++        );
+     }
+ }
++
++#[cfg(feature = "tauri-runtime")]
++#[tauri::command]
++pub async fn acp_switch_agent(
++    conversation_id: i32,
++    expected_agent: AgentType,
++    expected_session_id: Option<String>,
++    target_agent: AgentType,
++    manager: State<'_, ConnectionManager>,
++    db: State<'_, AppDatabase>,
++    app_handle: tauri::AppHandle,
++) -> Result<(), AcpError> {
++    verify_agent_installed(target_agent).await?;
++    manager
++        .switch_conversation_agent(
++            &db,
++            EventEmitter::Tauri(app_handle),
++            conversation_id,
++            expected_agent,
++            expected_session_id,
++            target_agent,
++        )
++        .await
++}
+diff --git a/src-tauri/src/commands/conversations.rs b/src-tauri/src/commands/conversations.rs
+index 5bdfb08..c85f0c8 100644
+--- a/src-tauri/src/commands/conversations.rs
++++ b/src-tauri/src/commands/conversations.rs
+@@ -1506,6 +1506,27 @@ pub async fn get_folder_conversation_core(
+             summary.external_id = Some(new_ext_id);
+         }
+     }
++    let mut handoff = crate::db::service::conversation_handoff::load(conn, conversation_id)
++        .await
++        .map_err(AppCommandError::from)?;
++    if let Some(ref mut h) = handoff {
++        crate::db::service::conversation_handoff::repair_codex_metadata(conn, conversation_id, h)
++            .await
++            .map_err(AppCommandError::from)?;
++    }
++    let handoff_revision = handoff.as_ref().map(|h| h.revision);
++    let handoff_agents = handoff
++        .as_ref()
++        .map(|h| {
++            h.retired_sessions
++                .iter()
++                .filter_map(|s| s.revision.map(|r| (r, s.agent.clone())))
++                .collect()
++        })
++        .unwrap_or_default();
++    if let Some(handoff) = handoff {
++        turns = handoff.merge(turns);
++    }
+     summary.message_count = turns.len() as u32;
+     // The transcript is the richer source for the session's model. Codex is
+     // the concrete case: an ACP-driven row is created before any
+@@ -1536,6 +1557,8 @@ pub async fn get_folder_conversation_core(
+ 
+     Ok((
+         DbConversationDetail {
++            handoff_revision,
++            handoff_agents,
+             summary,
+             turns,
+             session_stats,
+@@ -1865,6 +1888,7 @@ pub async fn get_folder_conversation_with_live_core(
+     conversation_id: i32,
+     window: Option<crate::commands::turn_window::TurnWindowReq>,
+ ) -> Result<DbConversationDetail, AppCommandError> {
++    let _handoff_guard = manager.lock_conversation(conversation_id).await;
+     let (mut detail, parsed_title) = get_folder_conversation_core(conn, conversation_id).await?;
+ 
+     // Per-turn auto-title backfill. The parse `get_folder_conversation_core`
+@@ -6634,6 +6658,8 @@ mod tests {
+ 
+     fn windowless_detail(turns: Vec<MessageTurn>) -> DbConversationDetail {
+         DbConversationDetail {
++            handoff_revision: None,
++            handoff_agents: Default::default(),
+             summary: DbConversationSummary {
+                 id: 1,
+                 folder_id: 1,
+diff --git a/src-tauri/src/commands/token_usage.rs b/src-tauri/src/commands/token_usage.rs
+index a6997f7..8bc5856 100644
+--- a/src-tauri/src/commands/token_usage.rs
++++ b/src-tauri/src/commands/token_usage.rs
+@@ -1338,6 +1338,8 @@ mod tests {
+ 
+     fn detail(turns: Vec<MessageTurn>, stats: Option<SessionStats>) -> DbConversationDetail {
+         DbConversationDetail {
++            handoff_revision: None,
++            handoff_agents: Default::default(),
+             summary: DbConversationSummary {
+                 id: 1,
+                 folder_id: 1,
+diff --git a/src-tauri/src/db/migration/mod.rs b/src-tauri/src/db/migration/mod.rs
+index 0ab6bb5..b07015c 100644
+--- a/src-tauri/src/db/migration/mod.rs
++++ b/src-tauri/src/db/migration/mod.rs
+@@ -47,6 +47,7 @@ mod m20260831_000001_canvas_node_group_grid;
+ mod m20260907_000001_canvas_node_path;
+ mod m20260929_000001_canvas_board;
+ mod m20260930_000001_agent_setting_drop_adapter_channel;
++mod m20261005_000001_conversation_handoff;
+ pub struct Migrator;
+ 
+ #[async_trait::async_trait]
+@@ -100,6 +101,7 @@ impl MigratorTrait for Migrator {
+             Box::new(m20260907_000001_canvas_node_path::Migration),
+             Box::new(m20260929_000001_canvas_board::Migration),
+             Box::new(m20260930_000001_agent_setting_drop_adapter_channel::Migration),
++            Box::new(m20261005_000001_conversation_handoff::Migration),
+         ]
+     }
+ }
+diff --git a/src-tauri/src/db/service/mod.rs b/src-tauri/src/db/service/mod.rs
+index 49cbe4e..6b7defc 100644
+--- a/src-tauri/src/db/service/mod.rs
++++ b/src-tauri/src/db/service/mod.rs
+@@ -19,3 +19,5 @@ pub mod tab_service;
+ pub mod thread_binding_service;
+ pub mod token_usage_service;
+ pub mod work_task_service;
++
++pub mod conversation_handoff;
+diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
+index 7105f47..9091327 100644
+--- a/src-tauri/src/lib.rs
++++ b/src-tauri/src/lib.rs
+@@ -502,6 +502,10 @@ mod tauri_app {
+ 
+     #[cfg_attr(mobile, tauri::mobile_entry_point)]
+     pub fn run() {
++        if let Err(err) = crate::acp::session_profiles::initialize() {
++            eprintln!("Agent profile initialization failed: {err}");
++            return;
++        }
+         // Ahead of the logging init, which is otherwise the first statement
+         // here: `init_desktop` builds a `tracing_appender::non_blocking` file
+         // writer, and that spawns a worker thread. `set_var` is UB once any
+@@ -1923,6 +1927,7 @@ mod tauri_app {
+                 acp_commands::acp_describe_agent_options,
+                 acp_commands::acp_cancel,
+                 acp_commands::acp_fork,
++                acp_commands::acp_switch_agent,
+                 acp_commands::acp_stop_async_task,
+                 acp_commands::acp_respond_permission,
+                 acp_commands::acp_answer_question,
+diff --git a/src-tauri/src/models/conversation.rs b/src-tauri/src/models/conversation.rs
+index 4218f13..a147ad4 100644
+--- a/src-tauri/src/models/conversation.rs
++++ b/src-tauri/src/models/conversation.rs
+@@ -103,6 +103,11 @@ pub struct ConversationDetail {
+ 
+ #[derive(Debug, Clone, Serialize)]
+ pub struct DbConversationDetail {
++    /// Present when this logical conversation spans multiple native sessions.
++    #[serde(skip_serializing_if = "Option::is_none")]
++    pub handoff_revision: Option<i32>,
++    /// Original agent for each archived handoff segment, keyed by revision.
++    pub handoff_agents: std::collections::BTreeMap<i32, AgentType>,
+     pub summary: DbConversationSummary,
+     pub turns: Vec<MessageTurn>,
+     #[serde(skip_serializing_if = "Option::is_none")]
+diff --git a/src-tauri/src/parsers/codex.rs b/src-tauri/src/parsers/codex.rs
+index 937fc9d..c0f6afb 100644
+--- a/src-tauri/src/parsers/codex.rs
++++ b/src-tauri/src/parsers/codex.rs
+@@ -209,6 +209,15 @@ impl CodexParser {
+         Self { base_dir }
+     }
+ 
++    pub(crate) fn get_retired_conversation(id: &str) -> Result<ConversationDetail, ParseError> {
++        Self::new().get_conversation(id).or_else(|_| {
++            Self {
++                base_dir: resolve_codex_home_dir().join("archived_sessions"),
++            }
++            .get_conversation(id)
++        })
++    }
++
+     /// Test-only constructor that lets callers point the parser at a fixture
+     /// directory instead of `~/.codex/sessions`.
+     #[cfg(any(test, feature = "test-utils"))]
+diff --git a/src-tauri/src/web/handlers/acp.rs b/src-tauri/src/web/handlers/acp.rs
+index 758e440..ca06d30 100644
+--- a/src-tauri/src/web/handlers/acp.rs
++++ b/src-tauri/src/web/handlers/acp.rs
+@@ -1527,3 +1527,66 @@ mod tests {
+         assert!(!text.contains("codex"));
+     }
+ }
++
++#[derive(Deserialize)]
++#[serde(rename_all = "camelCase")]
++pub struct SwitchAgentParams {
++    pub conversation_id: i32,
++    pub expected_agent: AgentType,
++    pub expected_session_id: Option<String>,
++    pub target_agent: AgentType,
++}
++
++pub async fn acp_switch_agent(
++    Extension(state): Extension<Arc<AppState>>,
++    Json(params): Json<SwitchAgentParams>,
++) -> Result<Json<()>, AppCommandError> {
++    acp_commands::verify_agent_installed(params.target_agent)
++        .await
++        .map_err(|e| AppCommandError::task_execution_failed(e.to_string()))?;
++    state
++        .connection_manager
++        .switch_conversation_agent(
++            &state.db,
++            state.emitter.clone(),
++            params.conversation_id,
++            params.expected_agent,
++            params.expected_session_id,
++            params.target_agent,
++        )
++        .await
++        .map_err(switch_agent_error)?;
++    Ok(Json(()))
++}
++
++fn switch_agent_error(error: AcpError) -> AppCommandError {
++    let message = error.to_string();
++    match error {
++        AcpError::ConversationChanged(_) => {
++            AppCommandError::new(AppErrorCode::ConversationChanged, message)
++        }
++        other => AppCommandError::task_execution_failed(other.to_string()),
++    }
++}
++
++#[cfg(test)]
++mod switch_agent_error_tests {
++    use super::*;
++    use axum::{http::StatusCode, response::IntoResponse};
++
++    #[test]
++    fn stale_switch_is_a_typed_conflict_not_a_server_failure() {
++        let error = switch_agent_error(AcpError::ConversationChanged("reload".into()));
++        assert_eq!(
++            serde_json::to_value(&error).unwrap()["code"],
++            "conversation_changed"
++        );
++        assert_eq!(error.into_response().status(), StatusCode::CONFLICT);
++        // Genuine failures still surface as 500; do not infer conflicts from text.
++        let failure = switch_agent_error(AcpError::protocol("Conversation changed"));
++        assert_eq!(
++            failure.into_response().status(),
++            StatusCode::INTERNAL_SERVER_ERROR
++        );
++    }
++}
+diff --git a/src-tauri/src/web/handlers/error.rs b/src-tauri/src/web/handlers/error.rs
+index 78bf067..9883f6f 100644
+--- a/src-tauri/src/web/handlers/error.rs
++++ b/src-tauri/src/web/handlers/error.rs
+@@ -10,7 +10,7 @@ fn status_for_app_error_code(code: AppErrorCode) -> StatusCode {
+     match code {
+         AppErrorCode::InvalidInput => StatusCode::BAD_REQUEST,
+         AppErrorCode::NotFound => StatusCode::NOT_FOUND,
+-        AppErrorCode::AlreadyExists | AppErrorCode::TurnInProgress => StatusCode::CONFLICT,
++        AppErrorCode::AlreadyExists | AppErrorCode::TurnInProgress | AppErrorCode::ConversationChanged => StatusCode::CONFLICT,
+         AppErrorCode::PermissionDenied => StatusCode::FORBIDDEN,
+         AppErrorCode::ConfigurationMissing
+         | AppErrorCode::ConfigurationInvalid
+diff --git a/src-tauri/src/web/router.rs b/src-tauri/src/web/router.rs
+index 64643c8..9a30245 100644
+--- a/src-tauri/src/web/router.rs
++++ b/src-tauri/src/web/router.rs
+@@ -934,6 +934,7 @@ pub fn build_router(
+         )
+         .route("/acp_cancel", post(handlers::acp::acp_cancel))
+         .route("/acp_fork", post(handlers::acp::acp_fork))
++        .route("/acp_switch_agent", post(handlers::acp::acp_switch_agent))
+         .route(
+             "/acp_stop_async_task",
+             post(handlers::acp::acp_stop_async_task),
+diff --git a/src/components/chat/chat-input.tsx b/src/components/chat/chat-input.tsx
+index 201257a..a4e94f3 100644
+--- a/src/components/chat/chat-input.tsx
++++ b/src/components/chat/chat-input.tsx
+@@ -1,7 +1,7 @@
+ "use client"
+ 
+ import type { ConversationFolderPickerOverride } from "@/components/chat/conversation-context-bar"
+-import { memo } from "react"
++import { memo, type ReactNode } from "react"
+ import { useTranslations } from "next-intl"
+ import type {
+   AgentType,
+@@ -30,6 +30,7 @@ interface ChatInputProps {
+   onSend: (draft: PromptDraft, modeId?: string | null) => void
+   onCancel: () => void
+   modes?: SessionModeInfo[]
++  agentSelector?: ReactNode
+   configOptions?: SessionConfigOptionInfo[]
+   modeLoading?: boolean
+   configOptionsLoading?: boolean
+@@ -109,6 +110,7 @@ export const ChatInput = memo(function ChatInput({
+   onSend,
+   onCancel,
+   modes,
++  agentSelector,
+   configOptions,
+   modeLoading = false,
+   configOptionsLoading = false,
+@@ -213,6 +215,7 @@ export const ChatInput = memo(function ChatInput({
+         isPrompting={isPrompting}
+         onCancel={onCancel}
+         modes={modes}
++        agentSelector={agentSelector}
+         configOptions={configOptions}
+         modeLoading={modeLoading}
+         configOptionsLoading={configOptionsLoading}
+diff --git a/src/components/chat/conversation-shell.tsx b/src/components/chat/conversation-shell.tsx
+index aa63397..f306671 100644
+--- a/src/components/chat/conversation-shell.tsx
++++ b/src/components/chat/conversation-shell.tsx
+@@ -75,6 +75,7 @@ interface ConversationShellProps {
+   ) => void | Promise<void>
+   children: ReactNode
+   modes?: SessionModeInfo[]
++  agentSelector?: ReactNode
+   configOptions?: SessionConfigOptionInfo[]
+   modeLoading?: boolean
+   configOptionsLoading?: boolean
+@@ -170,6 +171,7 @@ export function ConversationShell({
+   onAnswerPlanApproval,
+   children,
+   modes,
++  agentSelector,
+   configOptions,
+   modeLoading = false,
+   configOptionsLoading = false,
+@@ -277,6 +279,7 @@ export function ConversationShell({
+               onSend={onSend}
+               onCancel={onCancel}
+               modes={modes}
++              agentSelector={agentSelector}
+               configOptions={configOptions}
+               modeLoading={modeLoading}
+               configOptionsLoading={configOptionsLoading}
+diff --git a/src/components/chat/message-input.tsx b/src/components/chat/message-input.tsx
+index 34f1a75..960cf28 100644
+--- a/src/components/chat/message-input.tsx
++++ b/src/components/chat/message-input.tsx
+@@ -1,6 +1,13 @@
+ "use client"
+ 
+-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
++import {
++  type ReactNode,
++  useCallback,
++  useEffect,
++  useMemo,
++  useRef,
++  useState,
++} from "react"
+ import { useTranslations } from "next-intl"
+ import { isImeCompositionKey } from "@/lib/ime-composition"
+ import { Button } from "@/components/ui/button"
+@@ -190,6 +197,7 @@ interface MessageInputProps {
+   isPrompting?: boolean
+   onCancel?: () => void
+   modes?: SessionModeInfo[]
++  agentSelector?: ReactNode
+   configOptions?: SessionConfigOptionInfo[]
+   modeLoading?: boolean
+   configOptionsLoading?: boolean
+@@ -373,6 +381,7 @@ export function MessageInput({
+   isPrompting = false,
+   onCancel,
+   modes,
++  agentSelector,
+   configOptions,
+   modeLoading = false,
+   configOptionsLoading = false,
+@@ -2260,6 +2269,7 @@ export function MessageInput({
+                     onAddFeedback={onAddFeedback}
+                     feedbackAddDisabled={feedbackAddDisabled}
+                   />
++                  {agentSelector}
+                   {hasInlineSelectors && (
+                     <div className="hidden min-w-0 items-end gap-1 @[30rem]:flex">
+                       {inlineSelectorItems}
+diff --git a/src/components/chat/session-config-selector.tsx b/src/components/chat/session-config-selector.tsx
+index fa9761a..7f010ab 100644
+--- a/src/components/chat/session-config-selector.tsx
++++ b/src/components/chat/session-config-selector.tsx
+@@ -19,6 +19,7 @@ import type { ModelOptionGroup } from "@/lib/model-config-groups"
+ import type { SessionConfigOptionInfo } from "@/lib/types"
+ 
+ interface SessionConfigSelectorProps {
++  disabled?: boolean
+   option: SessionConfigOptionInfo
+   onSelect: (configId: string, valueId: string) => void
+   /**
+@@ -34,6 +35,7 @@ interface SessionConfigSelectorProps {
+ }
+ 
+ export function InlineSessionConfigSelector({
++  disabled = false,
+   option,
+   onSelect,
+   derivedGroups,
+@@ -76,7 +78,7 @@ export function InlineSessionConfigSelector({
+   return (
+     <DropdownMenu>
+       <SelectorTooltip label={option.name} description={option.description}>
+-        <DropdownMenuTrigger asChild>
++        <DropdownMenuTrigger asChild disabled={disabled}>
+           <Button
+             variant="ghost"
+             size="xs"
+diff --git a/src/components/conversations/conversation-detail-panel.tsx b/src/components/conversations/conversation-detail-panel.tsx
+index 7c98066..b5648b5 100644
+--- a/src/components/conversations/conversation-detail-panel.tsx
++++ b/src/components/conversations/conversation-detail-panel.tsx
+@@ -17,6 +17,10 @@ import {
+   X,
+ } from "lucide-react"
+ import { useTranslations } from "next-intl"
++import {
++  handoffConversation,
++  handoffSessionId,
++} from "@/lib/conversation-handoff"
+ import { toast } from "sonner"
+ import {
+   getCachedSelectors,
+@@ -44,6 +48,7 @@ import {
+   parkAskSelectionPrompt,
+   type AskSelectionParkedDetail,
+ } from "@/lib/ask-selection-handoff"
++import { useConversationHandoffSync } from "@/hooks/use-conversation-handoff-sync"
+ import { useConnectionLifecycle } from "@/hooks/use-connection-lifecycle"
+ import { useMessageQueue, type QueuedMessage } from "@/hooks/use-message-queue"
+ import { MessageListView } from "@/components/message/message-list-view"
+@@ -53,6 +58,11 @@ import {
+ } from "@/components/message/goal-control-context"
+ import { useAdvertisedGoalActions } from "@/hooks/use-goal-actions"
+ import { ConversationShell } from "@/components/chat/conversation-shell"
++import { InlineSessionConfigSelector } from "@/components/chat/session-config-selector"
++import {
++  HANDOFF_AGENTS,
++  supportsAgentHandoff,
++} from "@/lib/conversation-handoff"
+ import { SessionConfigStaleBanner } from "@/components/chat/session-config-stale-banner"
+ import { PiProjectTrustBanner } from "@/components/chat/pi-project-trust-banner"
+ import { FeedbackNotesDisplay } from "@/components/chat/feedback-notes-display"
+@@ -339,7 +349,12 @@ const ConversationTabView = memo(function ConversationTabView({
+   >(null)
+   const dbConversationId = conversationId ?? createdConversationId
+   const [draftAgentType, setDraftAgentType] = useState<AgentType>(agentType)
+-  const selectedAgent = conversationId != null ? agentType : draftAgentType
++  const [handoffAgent, setHandoffAgent] = useState<AgentType | null>(null)
++  const [switchingAgent, setSwitchingAgent] = useState(false)
++  const switchingAgentRef = useRef(false)
++  const tHandoff = useTranslations("ConversationHandoff")
++  const selectedAgent =
++    handoffAgent ?? (conversationId != null ? agentType : draftAgentType)
+   // Seed from localStorage so the React state reflects the user's saved
+   // mode for this agent immediately on mount. Without this seed, a reuse-
+   // path connect (idle window after a refresh, before the agent is GC'd)
+@@ -547,8 +562,7 @@ const ConversationTabView = memo(function ConversationTabView({
+   // it every reconnect passes sessionId=undefined → backend takes session/new
+   // → DB.external_id is overwritten on the next prompt → original sid
+   // orphaned, agent loses prior context.
+-  const externalId =
+-    runtimeExternalId ?? detail?.summary.external_id ?? undefined
++  const externalId = handoffSessionId(runtimeExternalId, detail, selectedAgent)
+   // For persisted conversations opened from the sidebar, wait until the
+   // session's external_id has been resolved before auto-connecting.
+   // Otherwise the auto-connect effect fires with sessionId=undefined and
+@@ -579,6 +593,8 @@ const ConversationTabView = memo(function ConversationTabView({
+     [acpAgents, selectedAgent]
+   )
+   const canAutoConnect =
++    !switchingAgent &&
++    (!detail || detail.summary.agent_type === selectedAgent) &&
+     (hasPersistedConversation || (agentsLoaded && usableAgentCount > 0)) &&
+     !awaitingHistoricalSessionId &&
+     // Skip the doomed auto-connect for a not-installed agent ONLY in the draft
+@@ -695,7 +711,7 @@ const ConversationTabView = memo(function ConversationTabView({
+   // A connection still bound to a different agent is never "ready" for the
+   // selected one — it would otherwise let a send reach the previous agent.
+   const connectionReady = isConnectionReady(
+-    connStatus,
++    switchingAgent ? "connecting" : connStatus,
+     conn.connectedWorkingDir,
+     workingDirForConnection,
+     conn.agentType,
+@@ -996,15 +1012,30 @@ const ConversationTabView = memo(function ConversationTabView({
+     // session/new and strand the conversation's history. Nothing ever nulls a
+     // row's external_id, and switching conversations changes the store key
+     // rather than clearing this one, so there is no case that needs the clear.
++    if (detail?.summary.agent_type !== selectedAgent) return
+     const persisted = detail?.summary.external_id
+     if (!persisted) return
+     setExternalId(effectiveConversationId, persisted)
+-  }, [effectiveConversationId, detail?.summary.external_id, setExternalId])
++  }, [
++    effectiveConversationId,
++    detail?.summary.external_id,
++    detail?.summary.agent_type,
++    selectedAgent,
++    setExternalId,
++  ])
+ 
+   useEffect(() => {
+-    if (!connSessionId) return
++    if (!connSessionId || conn.agentType !== selectedAgent || switchingAgent)
++      return
+     setExternalId(effectiveConversationId, connSessionId)
+-  }, [connSessionId, effectiveConversationId, setExternalId])
++  }, [
++    connSessionId,
++    conn.agentType,
++    selectedAgent,
++    switchingAgent,
++    effectiveConversationId,
++    setExternalId,
++  ])
+ 
+   useEffect(() => {
+     if (dbConversationId == null) return
+@@ -1092,6 +1123,7 @@ const ConversationTabView = memo(function ConversationTabView({
+       // re-queues at the TAIL.
+       opts?: { fromQueueFlush?: boolean }
+     ) => {
++      if (switchingAgentRef.current) return
+       // Capture the tab's chat-draft state + eager scratch dir synchronously,
+       // before any await. A folderless chat draft is NOT special-cased here:
+       // its first send takes the exact same gated, inline path as a normal new
+@@ -1506,8 +1538,8 @@ const ConversationTabView = memo(function ConversationTabView({
+   // Manual agent switch only updates local draft state. The single source of
+   // truth for (dis)connecting is `useConnectionLifecycle`'s auto-connect
+   // effect: when `selectedAgent` changes, the hook re-fires `connect()`,
+-  // which internally disconnects the old agent's connection at the same
+-  // contextKey before creating the new one (acp-connections-context.tsx).
++  // which parks the old agent and restores or creates the target runtime
++  // at the same visible contextKey (acp-connections-context.tsx).
+   // Doing the disconnect+reconnect here too would race the lifecycle path:
+   // a late-returning disconnect would dispatch CONNECTION_REMOVED by
+   // contextKey and wipe the new connection's frontend state, leaving a
+@@ -1527,6 +1559,98 @@ const ConversationTabView = memo(function ConversationTabView({
+     [confirmDraftAgent, tabId]
+   )
+ 
++  const handlePersistedAgentSwitch = useCallback(
++    async (target: AgentType) => {
++      const id = dbConvIdRef.current
++      if (
++        !id ||
++        switchingAgentRef.current ||
++        target === selectedAgentRef.current
++      )
++        return
++      if (connStatusRef.current === "prompting" || mqGetQueueLength() > 0)
++        return
++      switchingAgentRef.current = true
++      setSwitchingAgent(true)
++      try {
++        await handoffConversation({
++          conversationId: id,
++          expectedAgent: selectedAgentRef.current,
++          targetAgent: target,
++          apply: async (agent, title) => {
++            // connect() parks the previous agent and restores the target slot.
++            // Explicit disconnect would destroy the native runtime we retain.
++            sessionIdRef.current = null
++            setExternalId(effectiveConversationId, null)
++            setAcpLoadError(effectiveConversationId, null)
++            setHandoffAgent(agent)
++            setDraftAgentType(agent)
++            setModeId(getSavedModeId(agent))
++            setAgentConnectError(null)
++            bindConversationTab(
++              tabId,
++              id,
++              agent,
++              title ?? "",
++              effectiveConversationId
++            )
++            refetchDetail(effectiveConversationId)
++            refreshConversations()
++          },
++        })
++      } catch (error) {
++        toast.error(tHandoff("failed"), { description: String(error) })
++        refetchDetail(effectiveConversationId)
++      } finally {
++        switchingAgentRef.current = false
++        setSwitchingAgent(false)
++      }
++    },
++    [
++      bindConversationTab,
++      effectiveConversationId,
++      mqGetQueueLength,
++      refetchDetail,
++      refreshConversations,
++      setAcpLoadError,
++      setExternalId,
++      tabId,
++      tHandoff,
++    ]
++  )
++
++  useConversationHandoffSync(
++    dbConversationId,
++    effectiveConversationId,
++    selectedAgent,
++    refetchDetail
++  )
++
++  // A restart or another client may have changed the persisted agent while
++  // the opened-tab snapshot still names its predecessor. Reconcile on a new
++  // detail, before the auto-connect gate admits that old native adapter.
++  useEffect(() => {
++    if (!detail || switchingAgentRef.current) return
++    const persisted = detail.summary
++    if (persisted.agent_type === selectedAgentRef.current) return
++    setHandoffAgent(persisted.agent_type)
++    setExternalId(effectiveConversationId, persisted.external_id)
++    setModeId(getSavedModeId(persisted.agent_type))
++    bindConversationTab(
++      tabId,
++      persisted.id,
++      persisted.agent_type,
++      persisted.title ?? "",
++      effectiveConversationId
++    )
++  }, [
++    detail,
++    bindConversationTab,
++    effectiveConversationId,
++    setExternalId,
++    tabId,
++  ])
++
+   // AgentSelector auto-fallback: the requested default agent was missing
+   // or unavailable, so it picked a substitute on its own. Sync local UI
+   // state (so the connection points at the right agent immediately) but
+@@ -2130,7 +2254,8 @@ const ConversationTabView = memo(function ConversationTabView({
+         onForkFromTurn={
+           (connStatus === "connected" || connStatus === "prompting") &&
+           hasPersistedConversation &&
+-          conn.supportsFork
++          conn.supportsFork &&
++          !detail?.handoff_revision
+             ? handleForkFromTurn
+             : undefined
+         }
+@@ -2263,6 +2388,37 @@ const ConversationTabView = memo(function ConversationTabView({
+       onAnswerAskQuestion={handleAnswerAskQuestion}
+       onAnswerPlanApproval={handleAnswerPlanApproval}
+       modes={connectionModes}
++      agentSelector={
++        hasPersistedConversation &&
++        supportsAgentHandoff(selectedAgent) && (
++          <InlineSessionConfigSelector
++            option={{
++              id: "agent",
++              name: tHandoff("agent"),
++              description: switchingAgent
++                ? tHandoff("switching")
++                : tHandoff("hint"),
++              kind: {
++                type: "select",
++                current_value: selectedAgent,
++                groups: [],
++                options: HANDOFF_AGENTS,
++              },
++            }}
++            disabled={
++              switchingAgent ||
++              isConnecting ||
++              connStatus === "prompting" ||
++              msgQueue.length > 0 ||
++              runtimeSyncState !== "idle" ||
++              conn.backgroundOutstanding > 0
++            }
++            onSelect={(_, agent) =>
++              void handlePersistedAgentSwitch(agent as AgentType)
++            }
++          />
++        )
++      }
+       configOptions={connectionConfigOptions}
+       modeLoading={modeLoading}
+       configOptionsLoading={configOptionsLoading}
+diff --git a/src/components/message/message-list-view.tsx b/src/components/message/message-list-view.tsx
+index b2d2ddf..277c27f 100644
+--- a/src/components/message/message-list-view.tsx
++++ b/src/components/message/message-list-view.tsx
+@@ -8,6 +8,7 @@ import {
+   useConversationRuntimeStore,
+ } from "@/stores/conversation-runtime-store"
+ import { isWindowedDetail } from "@/lib/turn-window"
++import { replyAgent } from "@/lib/conversation-handoff"
+ import { CompletedTurnContent } from "./completed-turn-content"
+ import { ContextCompactionCard } from "./context-compaction-card"
+ import { CollapsibleUserMessage } from "./collapsible-user-message"
+@@ -910,6 +911,7 @@ export function isForkPointUnnamed(
+ 
+ const HistoricalMessageGroup = memo(function HistoricalMessageGroup({
+   group,
++  agentType,
+   dimmed = false,
+   showStats = true,
+   previousUserIndex = null,
+@@ -924,6 +926,7 @@ const HistoricalMessageGroup = memo(function HistoricalMessageGroup({
+   isThreadTail = false,
+ }: {
+   group: ResolvedMessageGroup
++  agentType?: AgentType
+   dimmed?: boolean
+   showStats?: boolean
+   previousUserIndex?: number | null
+@@ -989,6 +992,7 @@ const HistoricalMessageGroup = memo(function HistoricalMessageGroup({
+       )}
+       {showStats && group.role === "assistant" && (
+         <TurnStats
++          agentType={agentType}
+           usage={group.usage}
+           duration_ms={group.duration_ms}
+           model={group.model}
+@@ -1397,6 +1401,13 @@ export function MessageListView({
+               ) : null}
+               <HistoricalMessageGroup
+                 group={item.group}
++                agentType={replyAgent(
++                  item.sourceTurns?.[item.sourceTurns.length - 1]
++                    ?.source_turn_id ??
++                    item.sourceTurns?.[item.sourceTurns.length - 1]?.id,
++                  agentType,
++                  detail ?? {}
++                )}
+                 dimmed={item.phase === "optimistic"}
+                 showStats={item.showStats}
+                 previousUserIndex={item.previousUserIndex}
+@@ -1432,6 +1443,8 @@ export function MessageListView({
+     },
+     [
+       userTurnHeader,
++      agentType,
++      detail,
+       fold.armed,
+       fold.roundOpen,
+       fold.epoch,
+diff --git a/src/components/message/turn-stats.tsx b/src/components/message/turn-stats.tsx
+index 77e2d59..0a8252c 100644
+--- a/src/components/message/turn-stats.tsx
++++ b/src/components/message/turn-stats.tsx
+@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+ import {
+   ArrowUpToLine,
+   BrainCog,
++  Bot,
+   CheckIcon,
+   Coins,
+   CopyIcon,
+@@ -22,9 +23,13 @@ import { useModelLabel } from "@/components/message/model-label-context"
+ import { useCreateTaskFromMessage } from "./use-create-task-from-message"
+ import { formatTokenCount } from "@/lib/token-format"
+ import { cn, copyTextToClipboard } from "@/lib/utils"
+-import type { TurnUsage } from "@/lib/types"
++import { getAgentLabel } from "@/lib/custom-agents"
++import { useModelLabels } from "@/hooks/use-model-labels"
++import type { AgentType, TurnUsage } from "@/lib/types"
+ 
+ interface TurnStatsProps {
++  agentType?: AgentType
++
+   usage?: TurnUsage | null
+   duration_ms?: number | null
+   model?: string | null
+@@ -52,6 +57,7 @@ const iconButtonClass =
+   "inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+ 
+ export function TurnStats({
++  agentType,
+   usage,
+   duration_ms,
+   model,
+@@ -68,7 +74,9 @@ export function TurnStats({
+   const t = useTranslations("Folder.chat.messageList")
+   const tTasks = useTranslations("Tasks")
+   const scroll = useMessageScroll()
+-  const modelLabel = useModelLabel()
++  const contextModelLabel = useModelLabel()
++  const agentModelLabel = useModelLabels(agentType)
++  const modelLabel = agentType ? agentModelLabel : contextModelLabel
+   const [isCopied, setIsCopied] = useState(false)
+   const timeoutRef = useRef<number>(0)
+   const shortTimeFormatter = useMemo(
+@@ -241,6 +249,22 @@ export function TurnStats({
+             </TooltipContent>
+           </Tooltip>
+         )}
++        {agentType && (
++          <Tooltip>
++            <TooltipTrigger asChild>
++              <button
++                type="button"
++                className={cn(iconButtonClass, "cursor-default")}
++                aria-label="Agent"
++              >
++                <Bot aria-hidden="true" className="h-3.5 w-3.5" />
++              </button>
++            </TooltipTrigger>
++            <TooltipContent side="top">
++              {getAgentLabel(agentType)}
++            </TooltipContent>
++          </Tooltip>
++        )}
+         {displayModels.length > 0 && (
+           <Tooltip>
+             <TooltipTrigger asChild>
+diff --git a/src/contexts/acp-connections-context.test.tsx b/src/contexts/acp-connections-context.test.tsx
+index ebaa7ab..4041b87 100644
+--- a/src/contexts/acp-connections-context.test.tsx
++++ b/src/contexts/acp-connections-context.test.tsx
+@@ -6770,3 +6770,145 @@ describe("AIR session failures are told as notifications", () => {
+     expect(h.recordAlert).not.toHaveBeenCalled()
+   })
+ })
++
++describe("retained agent connections", () => {
++  async function select(
++    agent: "codex" | "custom:devin",
++    sid: string,
++    connection: string,
++    workingDir = "/workspace"
++  ) {
++    h.acpConnect.mockResolvedValueOnce(connection)
++    await act(async () => {
++      await h.actions!.connect(TAB, agent, workingDir, sid, 42)
++    })
++    emitAcpEvent(latestAttachHandlers(), {
++      seq: 1,
++      connection_id: connection,
++      type: "session_started",
++      session_id: sid,
++    })
++    emitAcpEvent(latestAttachHandlers(), {
++      seq: 2,
++      connection_id: connection,
++      type: "status_changed",
++      status: "connected",
++    })
++  }
++
++  it("reuses A after A to B to A, including selectors and native identity", async () => {
++    h.acpFindConnectionForConversation.mockResolvedValue(null)
++    await mountProvider()
++    await select("codex", "a-session", "a-conn")
++    await select("custom:devin", "b-session", "b-conn")
++    expect(h.acpDisconnect).not.toHaveBeenCalled()
++    await act(async () => {
++      await h.actions!.connect(TAB, "codex", "/workspace", "a-session", 42)
++    })
++    expect(h.acpConnect).toHaveBeenCalledTimes(2)
++    expect(h.store!.getConnection(TAB)?.connectionId).toBe("a-conn")
++    expect(h.store!.getConnection(TAB)?.sessionId).toBe("a-session")
++    expect(h.store!.getConnection(TAB)?.status).toBe("connected")
++    expect(h.acpDisconnect).not.toHaveBeenCalled()
++    await act(async () => {
++      await h.actions!.disconnect(TAB)
++    })
++    expect(h.acpDisconnect).toHaveBeenCalledWith("a-conn")
++    expect(h.acpDisconnect).toHaveBeenCalledWith("b-conn")
++  })
++
++  it("keeps parked agents alive while their conversation stays open", async () => {
++    vi.useFakeTimers()
++    try {
++      h.acpFindConnectionForConversation.mockResolvedValue(null)
++      await mountProvider()
++      await select("codex", "a-session", "a-conn")
++      await select("custom:devin", "b-session", "b-conn")
++      h.actions!.registerLiveSurfaceKeys("test-tab", new Set([TAB]))
++      await act(async () => {
++        await vi.advanceTimersByTimeAsync(
++          CONNECTION_IDLE_TIMEOUT_MS + IDLE_SWEEP_INTERVAL_MS
++        )
++      })
++      expect(h.acpTouchConnection).toHaveBeenCalledWith("a-conn")
++      expect(h.acpTouchConnection).toHaveBeenCalledWith("b-conn")
++      expect(h.acpDisconnect).not.toHaveBeenCalled()
++    } finally {
++      vi.useRealTimers()
++    }
++  })
++
++  it("does not resurrect a parked agent when the tab closes during the liveness probe", async () => {
++    h.acpFindConnectionForConversation.mockResolvedValue(null)
++    await mountProvider()
++    await select("codex", "a-session", "a-conn")
++    await select("custom:devin", "b-session", "b-conn")
++    let resolveProbe!: (live: boolean) => void
++    h.acpTouchConnection.mockImplementationOnce(
++      () =>
++        new Promise<boolean>((resolve) => {
++          resolveProbe = resolve
++        })
++    )
++    let switching!: Promise<void>
++    await act(async () => {
++      switching = h.actions!.connect(
++        TAB,
++        "codex",
++        "/workspace",
++        "a-session",
++        42
++      )
++    })
++    await act(async () => {
++      await h.actions!.disconnect(TAB)
++    })
++    await act(async () => {
++      resolveProbe(true)
++      await switching
++    })
++    expect(h.store!.getConnection(TAB)).toBeUndefined()
++    expect(h.acpConnect).toHaveBeenCalledTimes(2)
++    expect(h.acpDisconnect).toHaveBeenCalledWith("a-conn")
++    expect(h.acpDisconnect).toHaveBeenCalledWith("b-conn")
++  })
++
++  it("replaces an obsolete workspace slot and retains its replacement", async () => {
++    h.acpFindConnectionForConversation.mockResolvedValue(null)
++    await mountProvider()
++    await select("codex", "a-old", "a-old-conn")
++    await select("custom:devin", "b-old", "b-old-conn")
++    await select("custom:devin", "b-new", "b-new-conn", "/new-workspace")
++    await select("codex", "a-new", "a-new-conn", "/new-workspace")
++    expect(h.acpDisconnect).toHaveBeenCalledWith("a-old-conn")
++    await act(async () => {
++      await h.actions!.connect(
++        TAB,
++        "custom:devin",
++        "/new-workspace",
++        "b-new",
++        42
++      )
++    })
++    await act(async () => {
++      await h.actions!.connect(TAB, "codex", "/new-workspace", "a-new", 42)
++    })
++    expect(h.acpConnect).toHaveBeenCalledTimes(4)
++    expect(h.store!.getConnection(TAB)?.connectionId).toBe("a-new-conn")
++    expect(h.acpDisconnect).not.toHaveBeenCalledWith("a-new-conn")
++  })
++
++  it("does not reuse a dead parked connection", async () => {
++    h.acpFindConnectionForConversation.mockResolvedValue(null)
++    await mountProvider()
++    await select("codex", "a-session", "a-conn")
++    await select("custom:devin", "b-session", "b-conn")
++    h.acpTouchConnection.mockResolvedValue(false)
++    h.acpConnect.mockResolvedValue("replacement")
++    await act(async () => {
++      await h.actions!.connect(TAB, "codex", "/workspace", "a-session", 42)
++    })
++    expect(h.acpConnect).toHaveBeenCalledTimes(3)
++    expect(h.store!.getConnection(TAB)?.connectionId).toBe("replacement")
++  })
++})
+diff --git a/src/contexts/acp-connections-context.tsx b/src/contexts/acp-connections-context.tsx
+index cd0ee22..8085f38 100644
+--- a/src/contexts/acp-connections-context.tsx
++++ b/src/contexts/acp-connections-context.tsx
+@@ -3510,14 +3510,20 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
+   // CONNECTION_IDLE_TIMEOUT_MS while the card is still on screen. Keyed by
+   // source so two registrars never clobber each other's set.
+   const extraLiveKeysRef = useRef(new Map<string, Set<string>>())
++  // One retained runtime per agent and visible conversation tab. These are
++  // real connections, including their event cursors and native session ids.
++  const parkedAgentKeysRef = useRef(new Map<string, string>())
+ 
+   /** Every contextKey a visible surface is currently holding open. */
+   const heldOpenKeys = useCallback((): Set<string> => {
+-    if (extraLiveKeysRef.current.size === 0) return openTabKeysRef.current
+     const all = new Set(openTabKeysRef.current)
+     for (const keys of extraLiveKeysRef.current.values()) {
+       for (const key of keys) all.add(key)
+     }
++    for (const [parked, owner] of parkedAgentKeysRef.current) {
++      if (all.has(owner) || storeRef.current.activeKey === owner)
++        all.add(parked)
++    }
+     return all
+   }, [])
+ 
+@@ -6431,6 +6437,33 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
+     ]
+   )
+ 
++  const moveAgentConnection = useCallback(
++    (fromKey: string, toKey: string) => {
++      const conn = storeRef.current.connections.get(fromKey)
++      if (!conn) return
++      flushStreamingQueue(fromKey)
++      bindConnectionRoute(conn.connectionId, toKey)
++      releaseConnectionRoute(conn.connectionId, fromKey)
++      rekeyGenerationRef.current.set(
++        fromKey,
++        (rekeyGenerationRef.current.get(fromKey) ?? 0) + 1
++      )
++      lastActivityRef.current.set(toKey, Date.now())
++      lastActivityRef.current.delete(fromKey)
++      teardownAttachSubscription(fromKey)
++      dispatch({ type: "REKEY_CONNECTION", fromKey, toKey })
++      setupAttachSubscription(toKey, conn.connectionId, conn.lastAppliedSeq)
++    },
++    [
++      bindConnectionRoute,
++      dispatch,
++      flushStreamingQueue,
++      releaseConnectionRoute,
++      setupAttachSubscription,
++      teardownAttachSubscription,
++    ]
++  )
++
+   const connect = useCallback(
+     async (
+       contextKey: string,
+@@ -6534,6 +6567,58 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
+ 
+         const nextWorkingDir = workingDir ?? null
+         let existing = storeRef.current.connections.get(contextKey)
++        if (
++          existing &&
++          existing.agentType !== agentType &&
++          existing.workingDir === nextWorkingDir &&
++          existing.status === "connected" &&
++          !isConnectionBusy(existing)
++        ) {
++          const parkedKey = `${contextKey}::agent:${existing.agentType}`
++          // A retained slot is consumed when restored, so this destination
++          // cannot already own another live runtime.
++          if (!storeRef.current.connections.has(parkedKey)) {
++            parkedAgentKeysRef.current.set(parkedKey, contextKey)
++            moveAgentConnection(contextKey, parkedKey)
++            existing = undefined
++          }
++        }
++        if (!existing) {
++          const parkedKey = `${contextKey}::agent:${agentType}`
++          const parked = storeRef.current.connections.get(parkedKey)
++          const obsoleteSlot =
++            parked &&
++            (parked.workingDir !== nextWorkingDir ||
++              (sessionId != null && parked.sessionId !== sessionId))
++          if (
++            parked &&
++            (obsoleteSlot ||
++              !(await isConnectionLiveOnBackend(parked.connectionId)))
++          ) {
++            if (obsoleteSlot && !parked.isViewer) {
++              await acpDisconnect(parked.connectionId).catch(() => {})
++            }
++            markConnectionGone(parkedKey, parked.connectionId)
++            teardownAttachSubscription(parkedKey)
++            releaseConnectionRoute(parked.connectionId, parkedKey)
++            dispatch({ type: "CONNECTION_REMOVED", contextKey: parkedKey })
++            parkedAgentKeysRef.current.delete(parkedKey)
++          }
++          if (
++            parked &&
++            storeRef.current.connections.has(parkedKey) &&
++            parked.workingDir === nextWorkingDir &&
++            (!sessionId || parked.sessionId === sessionId) &&
++            parked.status === "connected"
++          ) {
++            if (abandonedKeysRef.current.has(contextKey)) return
++            const pending = pendingConnectRequestsRef.current.get(contextKey)
++            if (pending && !sameConnectRequest(pending, request)) return
++            moveAgentConnection(parkedKey, contextKey)
++            parkedAgentKeysRef.current.delete(parkedKey)
++            return
++          }
++        }
+         // Stale-state gate. The fast path below trusts any non-terminal status
+         // as "already connected", which is what makes a routing-less
+         // `prompting` / `connecting` entry unrecoverable — the tab keeps saying
+@@ -6992,6 +7077,7 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
+       isConnectionReferencedLocally,
+       localOwnerKeyOf,
+       markConnectionGone,
++      moveAgentConnection,
+       notifyConnectError,
+       releaseConnectionRoute,
+       resolveConnectBlockState,
+@@ -7023,6 +7109,22 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
+       if (connectingKeysRef.current.has(contextKey)) {
+         abandonedKeysRef.current.add(contextKey)
+       }
++      // An explicit close/restart releases all retained agents for this tab.
++      // Viewer slots only detach; they must never kill another client's owner.
++      for (const [parkedKey, owner] of parkedAgentKeysRef.current) {
++        if (owner !== contextKey) continue
++        const parked = storeRef.current.connections.get(parkedKey)
++        if (parked && !parked.isViewer) {
++          await acpDisconnect(parked.connectionId).catch(() => {})
++        }
++        if (parked) {
++          releaseConnectionRoute(parked.connectionId, parkedKey)
++          teardownAttachSubscription(parkedKey)
++          lastActivityRef.current.delete(parkedKey)
++          dispatch({ type: "CONNECTION_REMOVED", contextKey: parkedKey })
++        }
++        parkedAgentKeysRef.current.delete(parkedKey)
++      }
+       const conn = storeRef.current.connections.get(contextKey)
+       if (!conn) {
+         return true
+@@ -7314,6 +7416,7 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
+       retireTurnFailures(connectionId)
+     }
+     rekeyGenerationRef.current.clear()
++    parkedAgentKeysRef.current.clear()
+     await Promise.all(promises)
+     dispatch({ type: "REMOVE_ALL" })
+   }, [
+diff --git a/src/hooks/use-connection-lifecycle.ts b/src/hooks/use-connection-lifecycle.ts
+index 5cf1d40..2364f66 100644
+--- a/src/hooks/use-connection-lifecycle.ts
++++ b/src/hooks/use-connection-lifecycle.ts
+@@ -232,8 +232,8 @@ export function useConnectionLifecycle({
+   // for folder info to load (workingDir transitions from undefined →
+   // folder.path), and so that changing folders or agents on an already-
+   // connected tab triggers a reconnect. The context's connect() dedups
+-  // same-param calls and disconnects+reconnects when workingDir or
+-  // agentType differs. Status changes must NOT re-trigger this to avoid
++  // same-param calls, parks/restores agent runtimes, and reconnects when the
++  // workingDir changes. Status changes must NOT re-trigger this to avoid
+   // infinite reconnect loops on transient errors.
+   useEffect(() => {
+     if (!isActive) return
+diff --git a/src/i18n/messages/ar.json b/src/i18n/messages/ar.json
+index d800b1b..b71a490 100644
+--- a/src/i18n/messages/ar.json
++++ b/src/i18n/messages/ar.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "تعذّر على المتصفح المدمج التأكد من أنه يصل إلى المضيف البعيد عبر النفق. حاول مرة أخرى بعد قليل."
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/de.json b/src/i18n/messages/de.json
+index 1bb7c9d..17c8dbb 100644
+--- a/src/i18n/messages/de.json
++++ b/src/i18n/messages/de.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "Der integrierte Browser konnte nicht bestätigen, dass er den entfernten Host über den Tunnel erreicht. Versuche es gleich noch einmal."
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/en.json b/src/i18n/messages/en.json
+index 7b3b3bb..1543b2f 100644
+--- a/src/i18n/messages/en.json
++++ b/src/i18n/messages/en.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "The built-in browser couldn't confirm that it reaches the remote host through the tunnel. Try again in a moment."
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/es.json b/src/i18n/messages/es.json
+index a771905..1e8c969 100644
+--- a/src/i18n/messages/es.json
++++ b/src/i18n/messages/es.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "El navegador integrado no pudo confirmar que llega al host remoto a través del túnel. Vuelve a intentarlo en un momento."
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/fr.json b/src/i18n/messages/fr.json
+index e2b34e3..fe92449 100644
+--- a/src/i18n/messages/fr.json
++++ b/src/i18n/messages/fr.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "Le navigateur intégré n'a pas pu confirmer qu'il atteint l'hôte distant par le tunnel. Réessayez dans un instant."
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/ja.json b/src/i18n/messages/ja.json
+index 14e7d6a..3f909fc 100644
+--- a/src/i18n/messages/ja.json
++++ b/src/i18n/messages/ja.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "内蔵ブラウザーがトンネル経由でリモートホストに届くことを確認できませんでした。しばらくしてからもう一度お試しください。"
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/ko.json b/src/i18n/messages/ko.json
+index 5071a4b..5a3067b 100644
+--- a/src/i18n/messages/ko.json
++++ b/src/i18n/messages/ko.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "내장 브라우저가 터널을 통해 원격 호스트에 도달하는지 확인할 수 없습니다. 잠시 후 다시 시도하세요."
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/pt.json b/src/i18n/messages/pt.json
+index d15f3ca..f0c4674 100644
+--- a/src/i18n/messages/pt.json
++++ b/src/i18n/messages/pt.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "O navegador integrado não conseguiu confirmar que alcança o host remoto pelo túnel. Tente novamente em instantes."
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "Switching…",
++    "hint": "Context follows this conversation",
++    "failed": "Could not switch agent",
++    "reasoning": "Reasoning effort"
+   }
+ }
+diff --git a/src/i18n/messages/zh-CN.json b/src/i18n/messages/zh-CN.json
+index 32b90b3..09e61f2 100644
+--- a/src/i18n/messages/zh-CN.json
++++ b/src/i18n/messages/zh-CN.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "内置浏览器无法确认它能通过隧道访问远端主机。请稍后重试。"
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "正在切换…",
++    "hint": "切换后自动接续当前会话上下文",
++    "failed": "切换 Agent 失败",
++    "reasoning": "思考强度"
+   }
+ }
+diff --git a/src/i18n/messages/zh-TW.json b/src/i18n/messages/zh-TW.json
+index 72ac033..d65ea3e 100644
+--- a/src/i18n/messages/zh-TW.json
++++ b/src/i18n/messages/zh-TW.json
+@@ -6839,5 +6839,12 @@
+         "probeFailed": "內建瀏覽器無法確認它能透過通道連到遠端主機。請稍後再試。"
+       }
+     }
++  },
++  "ConversationHandoff": {
++    "agent": "Agent",
++    "switching": "正在切換…",
++    "hint": "切換後自動接續目前對話上下文",
++    "failed": "切換 Agent 失敗",
++    "reasoning": "思考強度"
+   }
+ }
+diff --git a/src/lib/api.ts b/src/lib/api.ts
+index fbce6bb..c0f6eee 100644
+--- a/src/lib/api.ts
++++ b/src/lib/api.ts
+@@ -6062,3 +6062,18 @@ export async function forgeSettingsSet(
+ ): Promise<ForgeSettingsStore> {
+   return getTransport().call("forge_settings_set", { folderId, settings })
+ }
++
++/** Atomically archive the old segment and select a fresh native agent session. */
++export async function acpSwitchAgent(
++  conversationId: number,
++  expectedAgent: AgentType,
++  expectedSessionId: string | null,
++  targetAgent: AgentType
++): Promise<void> {
++  return getTransport().call("acp_switch_agent", {
++    conversationId,
++    expectedAgent,
++    expectedSessionId,
++    targetAgent,
++  })
++}
+diff --git a/src/lib/types.ts b/src/lib/types.ts
+index eeb64d0..d025d6e 100644
+--- a/src/lib/types.ts
++++ b/src/lib/types.ts
+@@ -60,6 +60,7 @@ export type AppErrorCode =
+   | "external_command_failed"
+   | "window_operation_failed"
+   | "task_execution_failed"
++  | "conversation_changed"
+   | (string & {})
+ 
+ export interface AppCommandError {
+@@ -878,6 +879,8 @@ export type CanvasBoardChange =
+ export const CANVAS_BOARD_CHANGED_EVENT = "canvas-board://changed"
+ 
+ export interface DbConversationDetail {
++  handoff_revision?: number
++  handoff_agents?: Record<string, AgentType>
+   summary: DbConversationSummary
+   turns: MessageTurn[]
+   session_stats?: SessionStats | null
