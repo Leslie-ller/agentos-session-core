@@ -483,6 +483,46 @@ mod three_agent_history {
             assert_eq!(conversation_service::get_by_id(&reopened,c.id).await.unwrap().title.as_deref(),Some("Ledger"));
         }
     }
+
+    #[tokio::test]
+    async fn claude_code_native_transcript_receives_and_hides_the_handoff_seed() {
+        use codeg_lib::parsers::{claude::ClaudeParser, AgentParser};
+        let dir=tempfile::tempdir().unwrap();
+        let db=test_helpers::fresh_disk_db(dir.path()).await;
+        let folder=test_helpers::seed_folder(&db,"/tmp/claude-handoff-test").await;
+        let c=conversation_service::create(&db.conn,folder,AgentType::Codex,Some("Ledger".into()),None).await.unwrap();
+        assert!(supports_handoff(AgentType::ClaudeCode));
+        conversation_service::bind_external_id(&db.conn,c.id,"codex-1",&[]).await.unwrap();
+        let before=conversation_service::get_by_id(&db.conn,c.id).await.unwrap();
+        let history=vec![text_turn("user","Budget is 137."),text_turn("assistant","Noted: budget 137.")];
+        save_switch(&db.conn,&before,AgentType::ClaudeCode,history).await.unwrap();
+        let h=load(&db.conn,c.id).await.unwrap().unwrap();
+
+        // Shape matches what Claude Code writes under CLAUDE_CONFIG_DIR/projects.
+        let projects=dir.path().join("projects");
+        let project=projects.join("-tmp-claude-handoff-test");
+        std::fs::create_dir_all(&project).unwrap();
+        let record=|kind:&str,uuid:&str,ts:&str,text:&str| serde_json::json!({
+            "type":kind,"timestamp":ts,"uuid":uuid,"sessionId":"claude-1","cwd":"/tmp/claude-handoff-test",
+            "message":{"role":kind,"content":[{"type":"text","text":text}]}
+        }).to_string();
+        let parser=ClaudeParser::with_base_dir(projects);
+        std::fs::write(project.join("claude-1.jsonl"),format!("{}\n",
+            record("user","u1","2026-10-05T00:00:00Z","unrelated first prompt"))).unwrap();
+        assert!(!h.context_was_recorded(&parser.get_conversation("claude-1").unwrap().turns));
+
+        std::fs::write(project.join("claude-1.jsonl"),[
+            record("user","u1","2026-10-05T00:00:00Z",&format!("{}raise budget to 149",h.context_prefix)),
+            record("assistant","a1","2026-10-05T00:00:05Z","Budget is now 149."),
+        ].map(|l|l+"\n").concat()).unwrap();
+        let turns=parser.get_conversation("claude-1").unwrap().turns;
+        assert!(h.context_was_recorded(&turns));
+        let merged=h.merge(turns);
+        assert_eq!(merged.len(),4);
+        let shown=format!("{merged:?}");
+        assert!(shown.contains("raise budget to 149"));
+        assert!(!shown.contains("Codeg context transfer"));
+    }
 }
 
 #[test]

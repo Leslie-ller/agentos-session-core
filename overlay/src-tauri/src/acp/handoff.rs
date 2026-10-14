@@ -80,7 +80,7 @@ impl ConnectionManager {
             || target == expected_agent
         {
             return Err(AcpError::protocol(
-                "This prototype supports Codex, Antigravity and Devin",
+                "This prototype supports Codex, Claude Code, Antigravity and Devin",
             ));
         }
         let manager = self.clone_ref();

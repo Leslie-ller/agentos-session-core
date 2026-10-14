@@ -76,7 +76,7 @@ cargo test --manifest-path src-tauri/Cargo.toml \
 
 ## 范围
 
-这是会话客户端的一部分。当前交接支持 Codex、Antigravity 和自定义 Devin；仍在执行、等待用户批准或有委派任务的会话不能切换。跨 Agent 交接后的原生 fork 尚不支持。
+这是会话客户端的一部分。当前交接支持 Codex、Claude Code、Antigravity 和自定义 Devin；仍在执行、等待用户批准或有委派任务的会话不能切换。跨 Agent 交接后的原生 fork 尚不支持。
 
 后续的自动委派、后台目标、复杂协作、多目录工作区和其他本地实验未纳入这次公开扩展。运行时仍使用 Codeg 的基础客户端，其原有功能属于上游。
 

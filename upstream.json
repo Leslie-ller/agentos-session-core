@@ -6,12 +6,12 @@
   "overlay": {
     "src/hooks/use-conversation-handoff-sync.test.ts": "81a48a62329785dbb5b8fb3ff2298a59780a006fea212401cc0d5a5a881138ff",
     "src/hooks/use-conversation-handoff-sync.ts": "ec7d8cbbcf4dae9569f32c10ffb1b9fb1afea654a9f20d20aaa36430887adcb0",
-    "src/lib/conversation-handoff.test.ts": "ce7a433ff9c2167700f2ec2feb4e8205dd6dccae7ed4371ae361c19e6d1b6ae2",
-    "src/lib/conversation-handoff.ts": "dfaebf7cc3c163088fd75639dc08d05ec8b0b5fc518c3d663006915ac0329e05",
-    "src-tauri/src/acp/handoff.rs": "fa6744c466222720524bfc4785e6926e1a8c39876c342c1346843111f3f61efe",
+    "src/lib/conversation-handoff.test.ts": "316a95d74bee7371e728e96960f09d74a4eea338430cbe1db762ccf635d6ddad",
+    "src/lib/conversation-handoff.ts": "8d267407e1f557be886114d825a5bf368d62aa4dc3a0e1a9baefb1959e24fc7b",
+    "src-tauri/src/acp/handoff.rs": "da392737aac0ebaa5a939fcaa6f6928cde3bb03c3a85aba78b1ef26a0e92a3fb",
     "src-tauri/src/acp/session_profiles.rs": "ed782ce8392595dc250f6a2e364ee6116cacbf357a1c90d6519c79d655273f0c",
     "src-tauri/src/db/migration/m20261005_000001_conversation_handoff.rs": "cfb4468099de6e1eae4c33d93c93af7e0376645256ad7b840572244c447494ba",
-    "src-tauri/src/db/service/conversation_handoff.rs": "ee1f134b3ad61f9caffae6e69cdd01841af0f26b7852e2857130160cee1f4a91",
-    "src-tauri/tests/conversation_handoff.rs": "ef8e63703ab0e104c24d15dcefd30453cb1dabbe85de0e3541f81d3ca3ac66ad"
+    "src-tauri/src/db/service/conversation_handoff.rs": "a7a193ab1af2534ce2b50d95f843300b6282c988507cb89a6a11997c5f4380af",
+    "src-tauri/tests/conversation_handoff.rs": "cb8f6b3a71870ed6f8949cee9d3f90d2522724cdb4c87f438e3d26b792948dc7"
   }
 }

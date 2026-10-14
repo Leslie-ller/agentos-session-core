@@ -1,6 +1,10 @@
 import { replyAgent } from "./conversation-handoff"
 import { describe, expect, it, vi } from "vitest"
-import { handoffConversation, handoffSessionId } from "./conversation-handoff"
+import {
+  handoffConversation,
+  handoffSessionId,
+  supportsAgentHandoff,
+} from "./conversation-handoff"
 import type { AgentType, DbConversationDetail } from "./types"
 
 vi.mock("./api", () => ({
@@ -95,6 +99,11 @@ it("never resumes a different agent's native session, and prefers the current ru
   expect(handoffSessionId("a2", detail("codex", "a1"), "codex")).toBe("a2")
   expect(handoffSessionId(null, detail("codex", "a1"), "codex")).toBe("a1")
   expect(handoffSessionId("a2", null, "codex")).toBe("a2")
+})
+
+it("offers Claude Code as a handoff agent", () => {
+  expect(supportsAgentHandoff("claude_code")).toBe(true)
+  expect(supportsAgentHandoff("gemini")).toBe(false)
 })
 
 describe("reply provenance", () => {

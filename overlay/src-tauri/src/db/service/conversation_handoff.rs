@@ -13,7 +13,10 @@ const MAX_CONTEXT_CHARS: usize = 120_000;
 pub fn supports_handoff(agent: AgentType) -> bool {
     matches!(
         agent,
-        AgentType::Codex | AgentType::Antigravity | AgentType::Custom("devin")
+        AgentType::Codex
+            | AgentType::ClaudeCode
+            | AgentType::Antigravity
+            | AgentType::Custom("devin")
     )
 }
 

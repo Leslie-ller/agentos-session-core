@@ -55,6 +55,7 @@ export function handoffSessionId(
 
 export const HANDOFF_AGENTS = [
   { value: "codex", name: "Codex" },
+  { value: "claude_code", name: "Claude Code" },
   { value: "antigravity", name: "Antigravity" },
   { value: "custom:devin", name: "Devin" },
 ]
