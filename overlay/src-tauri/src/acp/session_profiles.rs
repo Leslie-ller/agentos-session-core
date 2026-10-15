@@ -296,6 +296,7 @@ pub fn initialize() -> io::Result<()> {
         ("CLAUDE_CONFIG_DIR", "claude", ".claude"),
         ("GEMINI_CLI_HOME", "gemini", ".gemini"),
         ("GEMINI_HOME", "antigravity", ".gemini"),
+        ("DSH_HOME", "deepseek", ".dsh"),
     ] {
         let path = if key == "CODEX_HOME" {
             std::env::var_os("CODEG_CODEX_HOME")
@@ -343,11 +344,42 @@ fn profile_key(agent: AgentType) -> Result<&'static str, AcpError> {
         AgentType::ClaudeCode => "CLAUDE_CONFIG_DIR",
         AgentType::Gemini => "GEMINI_CLI_HOME",
         AgentType::Antigravity => "GEMINI_HOME",
+        AgentType::DeepSeek => "DSH_HOME",
         a if a.custom_id() == Some("devin") => "CODEG_DEVIN_DATA_HOME",
         _ => return Err(AcpError::protocol(format!(
             "Session isolation is not yet verified for {agent}; launch refused to protect personal agent history"
         ))),
     })
+}
+
+/// deepseek-acp picks its route only from `DEEPSEEK_ACP_PROVIDER` /
+/// `DEEPSEEK_ACP_MODEL` and otherwise falls back to `deepseek-official`,
+/// ignoring the profile's `agent-default-model`. Bridge that setting so a
+/// route declared in `settings.yaml` is the one a new session starts on.
+/// Explicit env values win; an unreadable or partial setting changes nothing.
+fn apply_dsh_default_model(home: &Path, env: &mut BTreeMap<String, String>) {
+    let set = |k: &str| env.get(k).is_some_and(|v| !v.trim().is_empty());
+    if set("DEEPSEEK_ACP_PROVIDER") || set("DEEPSEEK_ACP_MODEL") {
+        return;
+    }
+    let Ok(raw) = std::fs::read_to_string(home.join("settings.yaml")) else {
+        return;
+    };
+    let Ok(doc) = serde_yaml::from_str::<serde_yaml::Value>(&raw) else {
+        return;
+    };
+    let pick = |k: &str| {
+        doc.get("agent-default-model")?
+            .get(k)?
+            .as_str()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_owned)
+    };
+    if let (Some(provider), Some(model)) = (pick("provider"), pick("model")) {
+        env.insert("DEEPSEEK_ACP_PROVIDER".into(), provider);
+        env.insert("DEEPSEEK_ACP_MODEL".into(), model);
+    }
 }
 
 fn apply_with_profiles(
@@ -392,6 +424,9 @@ fn apply_with_profiles(
             serde_json::json!("file"),
         );
         env.insert("CODEX_CONFIG".into(), config.to_string());
+    }
+    if agent == AgentType::DeepSeek {
+        apply_dsh_default_model(path, env);
     }
     if agent == AgentType::Antigravity {
         // The vendor defaults to the global gemini/antigravity-acp Keychain
@@ -480,6 +515,42 @@ mod tests {
                 assert_eq!(env["GEMINI_FORCE_FILE_STORAGE"], "true");
             }
         }
+    }
+    #[test]
+    fn dsh_starts_on_the_profile_default_route() {
+        let t = tempfile::tempdir().unwrap();
+        let path = t.path().canonicalize().unwrap();
+        let profiles = BTreeMap::from([("DSH_HOME".into(), path.to_string_lossy().into_owned())]);
+        let launch = |env: &mut BTreeMap<String, String>| {
+            apply_with_profiles(AgentType::DeepSeek, env, &profiles).unwrap();
+        };
+        // No settings: the adapter keeps its own default.
+        let mut env = BTreeMap::new();
+        launch(&mut env);
+        assert!(!env.contains_key("DEEPSEEK_ACP_PROVIDER"));
+
+        std::fs::write(
+            path.join("settings.yaml"),
+            "agent-default-model:\n  provider: my-route\n  model: flash-auto\n",
+        )
+        .unwrap();
+        let mut env = BTreeMap::new();
+        launch(&mut env);
+        assert_eq!(env["DSH_HOME"], path.to_string_lossy());
+        assert_eq!(env["DEEPSEEK_ACP_PROVIDER"], "my-route");
+        assert_eq!(env["DEEPSEEK_ACP_MODEL"], "flash-auto");
+
+        // An explicit choice in the agent's env wins over the profile.
+        let mut env = BTreeMap::from([("DEEPSEEK_ACP_MODEL".into(), "chosen".into())]);
+        launch(&mut env);
+        assert_eq!(env["DEEPSEEK_ACP_MODEL"], "chosen");
+        assert!(!env.contains_key("DEEPSEEK_ACP_PROVIDER"));
+
+        // A half-written setting is ignored rather than guessed at.
+        std::fs::write(path.join("settings.yaml"), "agent-default-model:\n  provider: x\n").unwrap();
+        let mut env = BTreeMap::new();
+        launch(&mut env);
+        assert!(!env.contains_key("DEEPSEEK_ACP_PROVIDER"));
     }
     #[test]
     fn unverified_agents_fail_closed() {

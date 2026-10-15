@@ -58,6 +58,7 @@ export const HANDOFF_AGENTS = [
   { value: "claude_code", name: "Claude Code" },
   { value: "antigravity", name: "Antigravity" },
   { value: "custom:devin", name: "Devin" },
+  { value: "deepseek", name: "DeepSeek Harness" },
 ]
 
 export function supportsAgentHandoff(agent: AgentType): boolean {

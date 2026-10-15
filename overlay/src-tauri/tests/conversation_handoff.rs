@@ -80,6 +80,44 @@ mod history_tests {
         assert!(h.context_prefix.contains("resuming your own earlier session"));
     }
 
+    #[test]
+    fn card_requests_and_replies_are_hidden_from_the_timeline() {
+        let turns = vec![
+            turn("user", "real question"),
+            turn("assistant", "real answer"),
+            turn("user", &card_request()),
+            turn("assistant", "1. goal: the card"),
+            turn("user", "next real question"),
+        ];
+        let kept: Vec<_> = strip_card_turns(turns)
+            .into_iter()
+            .map(|t| match &t.blocks[0] { ContentBlock::Text { text } => text.clone(), _ => unreachable!() })
+            .collect();
+        assert_eq!(kept, ["real question", "real answer", "next real question"]);
+    }
+
+    #[tokio::test]
+    async fn long_history_travels_as_card_plus_recent_turns() {
+        let db = test_helpers::fresh_in_memory_db().await;
+        let folder = test_helpers::seed_folder(&db, "/workspace").await;
+        let conv = conversation_service::create(&db.conn, folder, AgentType::Codex, None, None).await.unwrap();
+        conversation_service::bind_external_id(&db.conn, conv.id, "a1", &[]).await.unwrap();
+        let a = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        let mut history: Vec<_> = (0..200)
+            .map(|i| turn(if i % 2 == 0 { "user" } else { "assistant" }, &format!("EARLY-{i} {}", "x".repeat(1_000))))
+            .collect();
+        history.push(turn("user", "LATEST instruction"));
+        assert!(needs_card(&db.conn, conv.id, AgentType::ClaudeCode, &history).await.unwrap());
+        let card = HandoffCard { author: AgentType::Codex, text: "CARD: goal and retracted conclusions".into() };
+        save_switch_with_card(&db.conn, &a, AgentType::ClaudeCode, history, Some(200), Some(card)).await.unwrap();
+        let h = load(&db.conn, conv.id).await.unwrap().unwrap();
+        assert!(h.context_prefix.contains("CARD: goal and retracted conclusions"));
+        assert!(h.context_prefix.contains("LATEST instruction"));
+        assert!(!h.context_prefix.contains("EARLY-0 "));
+        assert!(h.context_prefix.contains("handoff card the previous agent wrote"));
+        assert_eq!(h.archive.len(), 201);
+    }
+
     #[tokio::test]
     async fn first_visit_and_legacy_records_still_receive_full_history() {
         let db = test_helpers::fresh_in_memory_db().await;

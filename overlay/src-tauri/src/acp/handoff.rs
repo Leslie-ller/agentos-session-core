@@ -88,6 +88,11 @@ impl ConnectionManager {
         // As with native fork, shield commit + runtime retirement from a web
         // client dropping its HTTP request. No prompts are sent by this task.
         tokio::spawn(async move {
+            // Outside the conversation lock: the card is an ordinary turn whose
+            // lifecycle events take that lock too.
+            let card = manager
+                .prepare_handoff_card(&db, id, expected_agent, expected_session_id.as_deref(), target)
+                .await;
             let _guard = manager.lock_conversation(id).await;
             let summary = conversation_service::get_by_id(&db, id).await
                 .map_err(|e| AcpError::protocol(e.to_string()))?;
@@ -160,7 +165,7 @@ impl ConnectionManager {
                 Some(sid) => read_native_turns(expected_agent, sid.clone()).await?.len(),
                 None => 0,
             };
-            conversation_handoff::save_switch_with_boundary(&db, &detail.summary, target, detail.turns, Some(native_turn_count))
+            conversation_handoff::save_switch_with_card(&db, &detail.summary, target, detail.turns, Some(native_turn_count), card)
                 .await.map_err(|e| match e {
                     crate::db::error::DbError::Conflict(message) => AcpError::ConversationChanged(message),
                     other => AcpError::protocol(other.to_string()),
@@ -188,6 +193,96 @@ impl ConnectionManager {
             crate::commands::conversations::emit_conversation_upsert(&emitter, &db, id).await;
             Ok(())
         }).await.map_err(|e| AcpError::protocol(format!("Agent switch failed: {e}")))?
+    }
+}
+
+impl ConnectionManager {
+    /// Ask the outgoing agent for a handoff card when the history is too long
+    /// to travel verbatim. Any failure means no card: the switch then uses the
+    /// verbatim seed, exactly as before.
+    async fn prepare_handoff_card(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        id: i32,
+        agent: AgentType,
+        session_id: Option<&str>,
+        target: AgentType,
+    ) -> Option<conversation_handoff::HandoffCard> {
+        let (detail, _) = crate::commands::conversations::get_folder_conversation_core(db, id)
+            .await
+            .ok()?;
+        if !conversation_handoff::needs_card(db, id, target, &detail.turns)
+            .await
+            .ok()?
+        {
+            return None;
+        }
+        let mut owners = Vec::new();
+        for (conn_id, state) in self
+            .connections
+            .lock()
+            .await
+            .iter()
+            .map(|(k, c)| (k.clone(), c.state.clone()))
+            .collect::<Vec<_>>()
+        {
+            let s = state.read().await;
+            if s.conversation_id == Some(id)
+                && s.agent_type == agent
+                && s.external_id.as_deref() == session_id
+                && !s.retired_for_handoff
+            {
+                owners.push(conn_id);
+            }
+        }
+        let [conn_id] = owners.as_slice() else {
+            tracing::info!(conversation_id = id, "[ACP] no single live runtime to write a handoff card");
+            return None;
+        };
+        let text = self.request_handoff_card(db, conn_id).await;
+        if text.is_none() {
+            tracing::warn!(conversation_id = id, "[ACP] handoff card unavailable; sending verbatim history");
+        }
+        text.map(|text| conversation_handoff::HandoffCard { author: agent, text })
+    }
+
+    async fn request_handoff_card(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        conn_id: &str,
+    ) -> Option<String> {
+        const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(180);
+        let state = self.get_state(conn_id).await?;
+        let (before, previous_text) = {
+            let s = state.read().await;
+            (s.turns_completed, s.last_assistant_text.clone())
+        };
+        self.send_prompt_inner(
+            conn_id,
+            vec![PromptInputBlock::Text { text: conversation_handoff::card_request() }],
+            None,
+        )
+        .await
+        .ok()?;
+        let deadline = tokio::time::Instant::now() + TIMEOUT;
+        let text = loop {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            let Some(state) = self.get_state(conn_id).await else {
+                return None;
+            };
+            let mut s = state.write().await;
+            if s.turns_completed != before {
+                // The card is plumbing: keep the transcript catch-up check
+                // anchored to the last real reply.
+                break std::mem::replace(&mut s.last_assistant_text, previous_text);
+            }
+            drop(s);
+            if tokio::time::Instant::now() >= deadline {
+                let _ = self.cancel(db, conn_id).await;
+                return None;
+            }
+        };
+        text.filter(|t| !t.trim().is_empty())
     }
 }
 

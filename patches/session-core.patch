@@ -459,10 +459,10 @@ index bb6fc62..3fd0306 100644
 +        .await
 +}
 diff --git a/src-tauri/src/commands/conversations.rs b/src-tauri/src/commands/conversations.rs
-index 5bdfb08..c85f0c8 100644
+index 5bdfb08..1a44fa8 100644
 --- a/src-tauri/src/commands/conversations.rs
 +++ b/src-tauri/src/commands/conversations.rs
-@@ -1506,6 +1506,27 @@ pub async fn get_folder_conversation_core(
+@@ -1506,6 +1506,28 @@ pub async fn get_folder_conversation_core(
              summary.external_id = Some(new_ext_id);
          }
      }
@@ -487,10 +487,11 @@ index 5bdfb08..c85f0c8 100644
 +    if let Some(handoff) = handoff {
 +        turns = handoff.merge(turns);
 +    }
++    turns = crate::db::service::conversation_handoff::strip_card_turns(turns);
      summary.message_count = turns.len() as u32;
      // The transcript is the richer source for the session's model. Codex is
      // the concrete case: an ACP-driven row is created before any
-@@ -1536,6 +1557,8 @@ pub async fn get_folder_conversation_core(
+@@ -1536,6 +1558,8 @@ pub async fn get_folder_conversation_core(
  
      Ok((
          DbConversationDetail {
@@ -499,7 +500,7 @@ index 5bdfb08..c85f0c8 100644
              summary,
              turns,
              session_stats,
-@@ -1865,6 +1888,7 @@ pub async fn get_folder_conversation_with_live_core(
+@@ -1865,6 +1889,7 @@ pub async fn get_folder_conversation_with_live_core(
      conversation_id: i32,
      window: Option<crate::commands::turn_window::TurnWindowReq>,
  ) -> Result<DbConversationDetail, AppCommandError> {
@@ -507,7 +508,7 @@ index 5bdfb08..c85f0c8 100644
      let (mut detail, parsed_title) = get_folder_conversation_core(conn, conversation_id).await?;
  
      // Per-turn auto-title backfill. The parse `get_folder_conversation_core`
-@@ -6634,6 +6658,8 @@ mod tests {
+@@ -6634,6 +6659,8 @@ mod tests {
  
      fn windowless_detail(turns: Vec<MessageTurn>) -> DbConversationDetail {
          DbConversationDetail {
