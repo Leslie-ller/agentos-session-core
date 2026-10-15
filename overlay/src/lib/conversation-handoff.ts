@@ -1,4 +1,8 @@
-import { acpSwitchAgent, getFolderConversation } from "./api"
+import {
+  acpCompactConversation,
+  acpSwitchAgent,
+  getFolderConversation,
+} from "./api"
 import type { AgentType, DbConversationDetail } from "./types"
 
 interface HandoffOptions {
@@ -38,6 +42,44 @@ export async function handoffConversation({
     if (after?.summary.agent_type !== targetAgent) throw error
   }
   await apply(targetAgent, before.summary.title)
+}
+
+interface CompactOptions {
+  conversationId: number
+  expectedAgent: AgentType
+  apply: () => Promise<void>
+  read?: (id: number) => Promise<DbConversationDetail>
+  compact?: typeof acpCompactConversation
+}
+
+/** Codeg's own compaction: the same agent continues in a fresh native
+ * session. Like a switch, a lost acknowledgement is reconciled from the
+ * database: the session moved off the one we compacted means it happened. */
+export async function compactConversation({
+  conversationId,
+  expectedAgent,
+  apply,
+  read = getFolderConversation,
+  compact = acpCompactConversation,
+}: CompactOptions): Promise<void> {
+  const before = await read(conversationId)
+  const session = before.summary.external_id
+  if (before.summary.agent_type !== expectedAgent || !session) {
+    throw new Error(
+      "Conversation changed in another client; reload before compacting"
+    )
+  }
+  try {
+    await compact(conversationId, expectedAgent, session)
+  } catch (error) {
+    const after = await read(conversationId).catch(() => null)
+    if (
+      after?.summary.agent_type !== expectedAgent ||
+      after.summary.external_id === session
+    )
+      throw error
+  }
+  await apply()
 }
 
 export function handoffSessionId(

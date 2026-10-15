@@ -119,6 +119,53 @@ mod history_tests {
     }
 
     #[tokio::test]
+    async fn compaction_moves_to_a_fresh_session_of_the_same_agent() {
+        let db = test_helpers::fresh_in_memory_db().await;
+        let folder = test_helpers::seed_folder(&db, "/workspace").await;
+        let conv = conversation_service::create(&db.conn, folder, AgentType::Codex, None, None).await.unwrap();
+        conversation_service::bind_external_id(&db.conn, conv.id, "a1", &[]).await.unwrap();
+        let a = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        let mut history: Vec<_> = (0..100)
+            .map(|i| turn(if i % 2 == 0 { "user" } else { "assistant" }, &format!("EARLY-{i} {}", "x".repeat(1_000))))
+            .collect();
+        history.push(turn("user", "LATEST instruction"));
+        let card = HandoffCard { author: AgentType::Codex, text: "CARD: decisions so far".into() };
+        save_compaction(&db.conn, &a, history.clone(), 101, card).await.unwrap();
+
+        let fresh = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        assert_eq!(fresh.agent_type, AgentType::Codex);
+        assert_eq!(fresh.external_id, None, "a new native session, not the full one");
+        let h = load(&db.conn, conv.id).await.unwrap().unwrap();
+        assert!(h.context_prefix.contains("CARD: decisions so far"));
+        assert!(h.context_prefix.contains("LATEST instruction"));
+        assert!(!h.context_prefix.contains("EARLY-0 "));
+        assert!(h.context_prefix.contains("new native agent session"));
+        assert_eq!(h.archive.len(), 101);
+        assert!(h.is_retired(AgentType::Codex, "a1"));
+
+        // Leaving and coming back never resumes the compacted session.
+        conversation_service::bind_external_id(&db.conn, conv.id, "a2", &[]).await.unwrap();
+        let a2 = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        save_switch_with_boundary(&db.conn, &a2, AgentType::ClaudeCode, history.clone(), Some(2)).await.unwrap();
+        conversation_service::bind_external_id(&db.conn, conv.id, "b1", &[]).await.unwrap();
+        let b = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        save_switch_with_boundary(&db.conn, &b, AgentType::Codex, history, Some(1)).await.unwrap();
+        let back = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        assert_eq!(back.external_id.as_deref(), Some("a2"));
+    }
+
+    #[tokio::test]
+    async fn compaction_needs_a_native_session_and_changes_nothing_otherwise() {
+        let db = test_helpers::fresh_in_memory_db().await;
+        let folder = test_helpers::seed_folder(&db, "/workspace").await;
+        let conv = conversation_service::create(&db.conn, folder, AgentType::Codex, None, None).await.unwrap();
+        let unbound = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        let card = HandoffCard { author: AgentType::Codex, text: "CARD".into() };
+        assert!(save_compaction(&db.conn, &unbound, vec![turn("user", "hi")], 1, card).await.is_err());
+        assert!(load(&db.conn, conv.id).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
     async fn first_visit_and_legacy_records_still_receive_full_history() {
         let db = test_helpers::fresh_in_memory_db().await;
         let folder = test_helpers::seed_folder(&db, "/workspace").await;

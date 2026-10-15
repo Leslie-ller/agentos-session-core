@@ -49,6 +49,10 @@ pub struct RetiredSession {
     /// needs the turns after this point; old records resend the whole history.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeline_turn_count: Option<usize>,
+    /// Replaced by a fresh session of the same agent because its context grew
+    /// too large. Never resumed: going back would restore the overflow.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub compacted: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -458,7 +462,7 @@ fn resumable(retired: &[RetiredSession], target: AgentType) -> Option<&RetiredSe
     retired
         .iter()
         .rev()
-        .find(|s| s.agent == target && s.native_turn_count.is_some())
+        .find(|s| s.agent == target && s.native_turn_count.is_some() && !s.compacted)
 }
 
 /// Where the seed starts: a resumed native session already holds everything
@@ -516,13 +520,46 @@ pub async fn save_switch_with_card(
     native_turn_count: Option<usize>,
     card: Option<HandoffCard>,
 ) -> Result<(), DbError> {
+    save_rebind(conn, source, target, turns, native_turn_count, card, false).await
+}
+
+/// Codeg's own compaction: move the conversation to a fresh session of the
+/// same agent, seeded with the card and the latest turns. Unlike a switch
+/// there is no verbatim fallback; the whole point is that the history no
+/// longer fits, so without a card nothing changes.
+pub async fn save_compaction(
+    conn: &DatabaseConnection,
+    source: &DbConversationSummary,
+    turns: Vec<MessageTurn>,
+    native_turn_count: usize,
+    card: HandoffCard,
+) -> Result<(), DbError> {
+    if source.external_id.is_none() {
+        return Err(DbError::Validation("This conversation has no native session to compact yet.".into()));
+    }
+    save_rebind(conn, source, source.agent_type, turns, Some(native_turn_count), Some(card), true).await
+}
+
+async fn save_rebind(
+    conn: &DatabaseConnection,
+    source: &DbConversationSummary,
+    target: AgentType,
+    turns: Vec<MessageTurn>,
+    native_turn_count: Option<usize>,
+    card: Option<HandoffCard>,
+    compact: bool,
+) -> Result<(), DbError> {
     let previous = load(conn, source.id).await?;
     let revision = previous.as_ref().map_or(1, |h| h.revision + 1);
     let mut retired = previous.map_or_else(Vec::new, |h| h.retired_sessions);
-    let target_retired = resumable(&retired, target);
+    let target_retired = if compact { None } else { resumable(&retired, target) };
     let target_session = target_retired.map(|s| s.session_id.clone());
     let (start, seed) = seed_start(target_retired, turns.len());
-    let carded = card.and_then(|card| card_prefix(&turns[start..], seed, &card).ok());
+    let carded = match card {
+        Some(card) if compact => Some(card_prefix(&turns[start..], seed, &card)?),
+        Some(card) => card_prefix(&turns[start..], seed, &card).ok(),
+        None => None,
+    };
     let (prefix, tool_files) = match carded {
         Some(prefix) => (prefix, None),
         None => seed_with_tool_files(
@@ -538,6 +575,7 @@ pub async fn save_switch_with_card(
             session_id: sid.clone(),
             native_turn_count,
             timeline_turn_count: native_turn_count.map(|_| turns.len()),
+            compacted: compact,
         });
     }
     let archive = serde_json::to_string(&turns).map_err(json_error)?;

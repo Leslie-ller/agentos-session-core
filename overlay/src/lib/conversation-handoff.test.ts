@@ -1,6 +1,7 @@
 import { replyAgent } from "./conversation-handoff"
 import { describe, expect, it, vi } from "vitest"
 import {
+  compactConversation,
   handoffConversation,
   handoffSessionId,
   supportsAgentHandoff,
@@ -8,6 +9,7 @@ import {
 import type { AgentType, DbConversationDetail } from "./types"
 
 vi.mock("./api", () => ({
+  acpCompactConversation: vi.fn(),
   acpSwitchAgent: vi.fn(),
   getFolderConversation: vi.fn(),
 }))
@@ -132,5 +134,71 @@ describe("reply provenance", () => {
       replyAgent("handoff-1-turn-0", "codex", { handoff_revision: 3 })
     ).toBeUndefined()
     expect(replyAgent("turn-0", "codex", {})).toBe("codex")
+  })
+})
+
+describe("conversation compaction", () => {
+  it("compacts the bound session, then moves the UI", async () => {
+    const events: string[] = []
+    const compact = vi.fn(async () => {
+      events.push("commit")
+    })
+    await compactConversation({
+      conversationId: 7,
+      expectedAgent: "codex",
+      read: vi.fn().mockResolvedValue(detail("codex", "a1")),
+      compact,
+      apply: async () => {
+        events.push("ui")
+      },
+    })
+    expect(compact).toHaveBeenCalledWith(7, "codex", "a1")
+    expect(events).toEqual(["commit", "ui"])
+  })
+
+  it("keeps the session when the agent could not summarize", async () => {
+    const apply = vi.fn()
+    await expect(
+      compactConversation({
+        conversationId: 7,
+        expectedAgent: "codex",
+        read: vi.fn().mockResolvedValue(detail("codex", "a1")),
+        compact: vi.fn().mockRejectedValue(new Error("no summary")),
+        apply,
+      })
+    ).rejects.toThrow("no summary")
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it("recognizes a committed compaction after a lost acknowledgement", async () => {
+    const apply = vi.fn()
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce(detail("codex", "a1"))
+      .mockResolvedValueOnce(detail("codex", null))
+    const compact = vi.fn().mockRejectedValue(new Error("network"))
+    await compactConversation({
+      conversationId: 7,
+      expectedAgent: "codex",
+      read,
+      compact,
+      apply,
+    })
+    expect(compact).toHaveBeenCalledTimes(1)
+    expect(apply).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses a conversation with nothing to compact", async () => {
+    const compact = vi.fn()
+    await expect(
+      compactConversation({
+        conversationId: 7,
+        expectedAgent: "codex",
+        read: vi.fn().mockResolvedValue(detail("codex", null)),
+        compact,
+        apply: vi.fn(),
+      })
+    ).rejects.toThrow()
+    expect(compact).not.toHaveBeenCalled()
   })
 })

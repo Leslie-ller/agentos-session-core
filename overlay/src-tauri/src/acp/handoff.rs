@@ -80,9 +80,49 @@ impl ConnectionManager {
             || target == expected_agent
         {
             return Err(AcpError::protocol(
-                "This prototype supports Codex, Claude Code, Antigravity and Devin",
+                "This prototype supports Codex, Claude Code, Antigravity, DeepSeek Harness and Devin",
             ));
         }
+        self.rebind_conversation(db, emitter, id, expected_agent, expected_session_id, target, false)
+            .await
+    }
+
+    /// Codeg's fallback compaction for an agent whose native compaction is
+    /// unreliable: the agent writes a handoff card and the conversation moves
+    /// to a fresh session of the same agent, seeded with that card and the
+    /// latest turns. Without a card nothing changes.
+    pub async fn compact_conversation(
+        &self,
+        db: &AppDatabase,
+        emitter: EventEmitter,
+        id: i32,
+        expected_agent: AgentType,
+        expected_session_id: Option<String>,
+    ) -> Result<(), AcpError> {
+        crate::acp::session_profiles::ensure_supported(expected_agent)?;
+        if !conversation_handoff::supports_handoff(expected_agent) {
+            return Err(AcpError::protocol("Compaction is not supported for this agent yet"));
+        }
+        if expected_session_id.is_none() {
+            return Err(AcpError::protocol("Nothing to compact yet: this conversation has no native session"));
+        }
+        self.rebind_conversation(db, emitter, id, expected_agent, expected_session_id, expected_agent, true)
+            .await
+    }
+
+    /// Move the conversation off its current native session: to `target`
+    /// (switch) or to a fresh session of the same agent (`compact`).
+    #[allow(clippy::too_many_arguments)]
+    async fn rebind_conversation(
+        &self,
+        db: &AppDatabase,
+        emitter: EventEmitter,
+        id: i32,
+        expected_agent: AgentType,
+        expected_session_id: Option<String>,
+        target: AgentType,
+        compact: bool,
+    ) -> Result<(), AcpError> {
         let manager = self.clone_ref();
         let db = db.conn.clone();
         // As with native fork, shield commit + runtime retirement from a web
@@ -91,8 +131,13 @@ impl ConnectionManager {
             // Outside the conversation lock: the card is an ordinary turn whose
             // lifecycle events take that lock too.
             let card = manager
-                .prepare_handoff_card(&db, id, expected_agent, expected_session_id.as_deref(), target)
+                .prepare_handoff_card(&db, id, expected_agent, expected_session_id.as_deref(), target, compact)
                 .await;
+            if compact && card.is_none() {
+                return Err(AcpError::protocol(
+                    "The agent could not write a summary; nothing was compacted",
+                ));
+            }
             let _guard = manager.lock_conversation(id).await;
             let summary = conversation_service::get_by_id(&db, id).await
                 .map_err(|e| AcpError::protocol(e.to_string()))?;
@@ -165,8 +210,11 @@ impl ConnectionManager {
                 Some(sid) => read_native_turns(expected_agent, sid.clone()).await?.len(),
                 None => 0,
             };
-            conversation_handoff::save_switch_with_card(&db, &detail.summary, target, detail.turns, Some(native_turn_count), card)
-                .await.map_err(|e| match e {
+            let saved = match card {
+                Some(card) if compact => conversation_handoff::save_compaction(&db, &detail.summary, detail.turns, native_turn_count, card).await,
+                card => conversation_handoff::save_switch_with_card(&db, &detail.summary, target, detail.turns, Some(native_turn_count), card).await,
+            };
+            saved.map_err(|e| match e {
                     crate::db::error::DbError::Conflict(message) => AcpError::ConversationChanged(message),
                     other => AcpError::protocol(other.to_string()),
                 })?;
@@ -198,8 +246,8 @@ impl ConnectionManager {
 
 impl ConnectionManager {
     /// Ask the outgoing agent for a handoff card when the history is too long
-    /// to travel verbatim. Any failure means no card: the switch then uses the
-    /// verbatim seed, exactly as before.
+    /// to travel verbatim (always, with `force`). Any failure means no card: a
+    /// switch then uses the verbatim seed, a compaction is abandoned.
     async fn prepare_handoff_card(
         &self,
         db: &sea_orm::DatabaseConnection,
@@ -207,15 +255,18 @@ impl ConnectionManager {
         agent: AgentType,
         session_id: Option<&str>,
         target: AgentType,
+        force: bool,
     ) -> Option<conversation_handoff::HandoffCard> {
-        let (detail, _) = crate::commands::conversations::get_folder_conversation_core(db, id)
-            .await
-            .ok()?;
-        if !conversation_handoff::needs_card(db, id, target, &detail.turns)
-            .await
-            .ok()?
-        {
-            return None;
+        if !force {
+            let (detail, _) = crate::commands::conversations::get_folder_conversation_core(db, id)
+                .await
+                .ok()?;
+            if !conversation_handoff::needs_card(db, id, target, &detail.turns)
+                .await
+                .ok()?
+            {
+                return None;
+            }
         }
         let mut owners = Vec::new();
         for (conn_id, state) in self
@@ -227,11 +278,7 @@ impl ConnectionManager {
             .collect::<Vec<_>>()
         {
             let s = state.read().await;
-            if s.conversation_id == Some(id)
-                && s.agent_type == agent
-                && s.external_id.as_deref() == session_id
-                && !s.retired_for_handoff
-            {
+            if owns_conversation(&s, id, agent, session_id) {
                 owners.push(conn_id);
             }
         }
@@ -298,4 +345,62 @@ async fn read_native_turns(agent: AgentType, sid: String) -> Result<Vec<MessageT
     })
     .await
     .map_err(|e| AcpError::protocol(e.to_string()))?
+}
+
+/// Whether a live runtime is the one serving conversation `id`. A runtime that
+/// resumed the row's session but has not been prompted yet is not linked to any
+/// conversation; it still counts when its agent and session match the row,
+/// otherwise a freshly reopened conversation could never write a card.
+fn owns_conversation(
+    s: &crate::acp::session_state::SessionState,
+    id: i32,
+    agent: AgentType,
+    session_id: Option<&str>,
+) -> bool {
+    let linked = match s.conversation_id {
+        Some(owner) => owner == id,
+        None => session_id.is_some(),
+    };
+    linked
+        && s.agent_type == agent
+        && s.external_id.as_deref() == session_id
+        && !s.retired_for_handoff
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::acp::session_state::SessionState;
+
+    fn runtime(conversation_id: Option<i32>, external_id: Option<&str>) -> SessionState {
+        let mut s = SessionState::new(
+            "c".to_string(),
+            AgentType::DeepSeek,
+            None,
+            "w".to_string(),
+            None,
+        );
+        s.conversation_id = conversation_id;
+        s.external_id = external_id.map(str::to_string);
+        s
+    }
+
+    #[test]
+    fn an_unprompted_runtime_on_the_rows_session_owns_it() {
+        let s = runtime(None, Some("sess"));
+        assert!(owns_conversation(&s, 1, AgentType::DeepSeek, Some("sess")));
+        assert!(!owns_conversation(&s, 1, AgentType::DeepSeek, Some("other")));
+        assert!(!owns_conversation(&s, 1, AgentType::Codex, Some("sess")));
+        // A fresh runtime with no session yet cannot claim a session-less row.
+        assert!(!owns_conversation(&runtime(None, None), 1, AgentType::DeepSeek, None));
+    }
+
+    #[test]
+    fn a_runtime_linked_elsewhere_or_retired_does_not_own_it() {
+        assert!(!owns_conversation(&runtime(Some(2), Some("sess")), 1, AgentType::DeepSeek, Some("sess")));
+        let mut s = runtime(Some(1), Some("sess"));
+        assert!(owns_conversation(&s, 1, AgentType::DeepSeek, Some("sess")));
+        s.retired_for_handoff = true;
+        assert!(!owns_conversation(&s, 1, AgentType::DeepSeek, Some("sess")));
+    }
 }
