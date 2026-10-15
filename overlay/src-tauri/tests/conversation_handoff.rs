@@ -76,6 +76,24 @@ mod history_tests {
         assert_eq!(merged.len(), 5);
         assert!(matches!(&merged[3].blocks[0], ContentBlock::Text{text} if text == "Continue A"));
         assert!(h.context_prefix.contains("B new result"));
+        assert!(!h.context_prefix.contains("A secret ORCHID"));
+        assert!(h.context_prefix.contains("resuming your own earlier session"));
+    }
+
+    #[tokio::test]
+    async fn first_visit_and_legacy_records_still_receive_full_history() {
+        let db = test_helpers::fresh_in_memory_db().await;
+        let folder = test_helpers::seed_folder(&db, "/workspace").await;
+        let conv = conversation_service::create(&db.conn, folder, AgentType::Codex, None, None).await.unwrap();
+        conversation_service::bind_external_id(&db.conn, conv.id, "a1", &[]).await.unwrap();
+        let a = conversation_service::get_by_id(&db.conn, conv.id).await.unwrap();
+        let original = vec![turn("user", "A secret ORCHID"), turn("assistant", "A result")];
+        // Legacy switch: no native boundary, so no timeline boundary either.
+        save_switch(&db.conn, &a, AgentType::Custom("devin"), original.clone()).await.unwrap();
+        let h = load(&db.conn, conv.id).await.unwrap().unwrap();
+        assert!(h.context_prefix.contains("A secret ORCHID"));
+        assert!(h.context_prefix.contains("new native agent session"));
+        assert_eq!(h.retired_sessions[0].timeline_turn_count, None);
     }
 
     #[tokio::test]
