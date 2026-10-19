@@ -74,6 +74,32 @@ cargo test --manifest-path src-tauri/Cargo.toml \
 
 测试覆盖切回旧会话、历史去重、并发切换冲突、旧连接拒绝发送、连接失效和对话页关闭后的释放。自动测试使用受控连接与合成消息，不需要付费模型账号；实际模型调用需要自己的 Agent 环境。
 
+## 实测：任务接续
+
+2026-10-19 用真实模型测了 30 次跨 Agent 接续，**成功 27 次（90%）**。记录在 [`eval/handoff-30`](eval/handoff-30)。
+
+- 任务：前一个 Agent 运行命令生成随机输入（随机标识、数量、单价），回复里不复述；切换后，后一个 Agent 不调用工具，只凭交接上下文按规则算出小计、运费和总额。
+- 覆盖：Claude Code（claude-haiku-5-5）、Codex（gpt-6-luna）、Devin（swe-2-high）之间的 6 个切换方向，每个方向 5 次；每轮新开一条对话，依次走完 6 次切换。
+- 判定：回复的 JSON 与期望值完全一致才算成功。失败不重试、不剔除。`audit.py` 从原始结果重新判定，并核对与测试脚本的判定一致。
+
+| 切换方向 | 成功 |
+| --- | --- |
+| Claude Code → Codex | 5/5 |
+| Codex → Devin | 5/5 |
+| Devin → Claude Code | 4/5 |
+| Claude Code → Devin | 5/5 |
+| Devin → Codex | 5/5 |
+| Codex → Claude Code | 3/5 |
+
+3 次失败都发生在切到 Claude Code 时：它认为交接过来的历史不是本会话产生的，拒绝采用其中的输入（见 `failures.json`）。这是单一类型任务上的小样本结果，不代表任意任务的成功率。`results.json` 中的对话是这次测试自动生成的，不含个人数据。
+
+重跑需要一个运行中的 AgentOS 服务和三个 Agent 的登录环境：
+
+```sh
+AGENTOS_TOKEN=<服务令牌> AGENTOS_API=http://127.0.0.1:3080/api/ python3 eval/handoff-30/run.py
+python3 eval/handoff-30/audit.py
+```
+
 ## 范围
 
 这是会话客户端的一部分。当前交接支持 Codex、Claude Code、Antigravity、DeepSeek Harness 和自定义 Devin；仍在执行、等待用户批准或有委派任务的会话不能切换。跨 Agent 交接后的原生 fork 尚不支持。

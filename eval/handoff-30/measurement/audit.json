@@ -1,0 +1,277 @@
+{
+  "status": "completed",
+  "planned": 30,
+  "attempted": 30,
+  "passed": 27,
+  "rate": 0.9,
+  "by_direction": {
+    "claude_code -> codex": {
+      "passed": 5,
+      "attempted": 5
+    },
+    "codex -> custom:devin": {
+      "passed": 5,
+      "attempted": 5
+    },
+    "custom:devin -> claude_code": {
+      "passed": 4,
+      "attempted": 5
+    },
+    "claude_code -> custom:devin": {
+      "passed": 5,
+      "attempted": 5
+    },
+    "custom:devin -> codex": {
+      "passed": 5,
+      "attempted": 5
+    },
+    "codex -> claude_code": {
+      "passed": 3,
+      "attempted": 5
+    }
+  },
+  "checks": [
+    {
+      "round": 1,
+      "edge": 1,
+      "source": "claude_code",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 1,
+      "edge": 2,
+      "source": "codex",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 1,
+      "edge": 3,
+      "source": "custom:devin",
+      "target": "claude_code",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 1,
+      "edge": 4,
+      "source": "claude_code",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 1,
+      "edge": 5,
+      "source": "custom:devin",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 1,
+      "edge": 6,
+      "source": "codex",
+      "target": "claude_code",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 2,
+      "edge": 1,
+      "source": "claude_code",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 2,
+      "edge": 2,
+      "source": "codex",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 2,
+      "edge": 3,
+      "source": "custom:devin",
+      "target": "claude_code",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 2,
+      "edge": 4,
+      "source": "claude_code",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 2,
+      "edge": 5,
+      "source": "custom:devin",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 2,
+      "edge": 6,
+      "source": "codex",
+      "target": "claude_code",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 3,
+      "edge": 1,
+      "source": "claude_code",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 3,
+      "edge": 2,
+      "source": "codex",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 3,
+      "edge": 3,
+      "source": "custom:devin",
+      "target": "claude_code",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 3,
+      "edge": 4,
+      "source": "claude_code",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 3,
+      "edge": 5,
+      "source": "custom:devin",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 3,
+      "edge": 6,
+      "source": "codex",
+      "target": "claude_code",
+      "success": false,
+      "reason": "receiver JSON did not exactly match expected result"
+    },
+    {
+      "round": 4,
+      "edge": 1,
+      "source": "claude_code",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 4,
+      "edge": 2,
+      "source": "codex",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 4,
+      "edge": 3,
+      "source": "custom:devin",
+      "target": "claude_code",
+      "success": false,
+      "reason": "receiver JSON did not exactly match expected result"
+    },
+    {
+      "round": 4,
+      "edge": 4,
+      "source": "claude_code",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 4,
+      "edge": 5,
+      "source": "custom:devin",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 4,
+      "edge": 6,
+      "source": "codex",
+      "target": "claude_code",
+      "success": false,
+      "reason": "receiver JSON did not exactly match expected result"
+    },
+    {
+      "round": 5,
+      "edge": 1,
+      "source": "claude_code",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 5,
+      "edge": 2,
+      "source": "codex",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 5,
+      "edge": 3,
+      "source": "custom:devin",
+      "target": "claude_code",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 5,
+      "edge": 4,
+      "source": "claude_code",
+      "target": "custom:devin",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 5,
+      "edge": 5,
+      "source": "custom:devin",
+      "target": "codex",
+      "success": true,
+      "reason": null
+    },
+    {
+      "round": 5,
+      "edge": 6,
+      "source": "codex",
+      "target": "claude_code",
+      "success": true,
+      "reason": null
+    }
+  ],
+  "unique_inputs": 30,
+  "results_sha256": "324e60976480bc9ce877cd350a8c5aa3602bddcc930cccb79d7c9b94a897f0ad"
+}

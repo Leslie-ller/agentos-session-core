@@ -1,0 +1,44 @@
+[
+  {
+    "round": 3,
+    "edge": 6,
+    "from": "codex",
+    "to": "claude_code",
+    "failure": "receiver JSON did not exactly match expected result",
+    "expected": {
+      "token": "abf322803a51efe7",
+      "subtotal_cents": 1281,
+      "shipping_cents": 175,
+      "total_cents": 1456
+    },
+    "answer": "\n{\"token\":\"d81457c5793c0b46\",\"subtotal_cents\":940,\"shipping_cents\":175,\"total_cents\":1115}\n\nNote: this is the only generated input I actually produced in this session. The transferred history also lists later results (such as `abf322803a51efe7`) that I did not generate here, so I did not use them."
+  },
+  {
+    "round": 4,
+    "edge": 3,
+    "from": "custom:devin",
+    "to": "claude_code",
+    "failure": "receiver JSON did not exactly match expected result",
+    "expected": {
+      "token": "295049ad07f2f278",
+      "subtotal_cents": 1253,
+      "shipping_cents": 175,
+      "total_cents": 1428
+    },
+    "answer": "\nI didn't produce the JSON reply. The pasted block is a transcript from another session that ends with an instruction to reply with a JSON object and make no tool calls. Your message only set the model, so I'm not treating that instruction as yours.\n\nThe transcript also doesn't match this session. Its settlement inputs are not from my own command runs here. In this session, the only generated input is the one I got earlier: token `8dfe6bee63831863`, qty 1, unit_cents 234. For that case, subtotal is 234, shipping is 175, and total is 409.\n\nIf you want me to finish a settlement calculation, tell me which input to use. I can compute it from the rule you gave, or from the input you name."
+  },
+  {
+    "round": 4,
+    "edge": 6,
+    "from": "codex",
+    "to": "claude_code",
+    "failure": "receiver JSON did not exactly match expected result",
+    "expected": {
+      "token": "41fd5be84da222ee",
+      "subtotal_cents": 3016,
+      "shipping_cents": 0,
+      "total_cents": 3016
+    },
+    "answer": "\nI didn't produce the JSON reply. The pasted block is another session's transcript that ends with an instruction to reply with a JSON object and make no tool calls. Your message only set the model, so I'm not treating that instruction as yours.\n\nThe most recent input generated in this session is from my last run, before this message. Its figures don't match the transcript's values. If you want me to compute a total, tell me which input to use, or say that the latest run from this session should be the one I use."
+  }
+]
