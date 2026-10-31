@@ -1,0 +1,3751 @@
+{
+  "started_at": "2026-10-19T20:42:13+0800",
+  "planned": 30,
+  "scope": "Random settlement task continuation via real AgentOS ACP handoff; three agents, six directed edges, five rounds. Fresh conversations per round. No retry or exclusion of failed cases.",
+  "cases": [
+    {
+      "round": 1,
+      "edge": 1,
+      "from": "claude_code",
+      "to": "codex",
+      "conversation": 13,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:18.444Z",
+          "completed_at": "2026-10-19T12:42:18.444Z"
+        },
+        {
+          "id": "turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:22.152Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 302,
+            "cache_creation_input_tokens": 7348,
+            "cache_read_input_tokens": 21627
+          },
+          "duration_ms": 3708,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:42:22.152Z",
+          "agent_message_id": "msg_011CgBcaJ4HrgDN49puMG7H3"
+        },
+        {
+          "id": "turn-2",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_013AJM2BntgwLNTwoagQAqE2",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_013AJM2BntgwLNTwoagQAqE2",
+              "output_preview": "{\"token\": \"aec6cd1e968b9d9a\", \"qty\": 1, \"unit_cents\": 912}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:22.500Z",
+          "duration_ms": 1418,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:42:23.570Z",
+          "agent_message_id": "msg_011CgBcaJ4HrgDN49puMG7H3"
+        },
+        {
+          "id": "turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:25.018Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 367,
+            "cache_read_input_tokens": 28975
+          },
+          "duration_ms": 5977,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:42:25.018Z",
+          "agent_message_id": "msg_011CgBcaaocSg37UeEw88bg5"
+        }
+      ],
+      "input": {
+        "token": "aec6cd1e968b9d9a",
+        "qty": 1,
+        "unit_cents": 912
+      },
+      "expected": {
+        "token": "aec6cd1e968b9d9a",
+        "subtotal_cents": 912,
+        "shipping_cents": 175,
+        "total_cents": 1087
+      },
+      "switch_seconds": 3.11,
+      "receiver_turns": [
+        {
+          "id": "handoff-1-turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:36.358Z",
+          "completed_at": "2026-10-19T12:42:36.358Z"
+        },
+        {
+          "id": "handoff-1-turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"aec6cd1e968b9d9a\",\"subtotal_cents\":912,\"shipping_cents\":175,\"total_cents\":1087}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:38.840Z",
+          "usage": {
+            "input_tokens": 19370,
+            "output_tokens": 38,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          },
+          "duration_ms": 2482,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:42:38.840Z"
+        }
+      ],
+      "answer": "{\"token\":\"aec6cd1e968b9d9a\",\"subtotal_cents\":912,\"shipping_cents\":175,\"total_cents\":1087}"
+    },
+    {
+      "round": 1,
+      "edge": 2,
+      "from": "codex",
+      "to": "custom:devin",
+      "conversation": 13,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-1-turn-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:42.125Z",
+          "completed_at": "2026-10-19T12:42:42.125Z"
+        },
+        {
+          "id": "handoff-1-turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_96361e88c273448090796ad3c7f1c90e",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_96361e88c273448090796ad3c7f1c90e",
+              "output_preview": "{\"token\": \"17bbdbd606e5b91a\", \"qty\": 4, \"unit_cents\": 170}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:43.962Z",
+          "usage": {
+            "input_tokens": 350,
+            "output_tokens": 78,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19200
+          },
+          "duration_ms": 2556,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:42:44.681Z"
+        },
+        {
+          "id": "handoff-1-turn-4",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:45.825Z",
+          "usage": {
+            "input_tokens": 352,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19328
+          },
+          "duration_ms": 1144,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:42:45.825Z"
+        }
+      ],
+      "input": {
+        "token": "17bbdbd606e5b91a",
+        "qty": 4,
+        "unit_cents": 170
+      },
+      "expected": {
+        "token": "17bbdbd606e5b91a",
+        "subtotal_cents": 680,
+        "shipping_cents": 175,
+        "total_cents": 855
+      },
+      "switch_seconds": 6.258,
+      "receiver_turns": [
+        {
+          "id": "handoff-2-acp-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:54.985Z"
+        },
+        {
+          "id": "handoff-2-acp-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "The latest input is {\"token\": \"17bbdbd606e5b91a\", \"qty\": 4, \"unit_cents\": 170}. The subtotal is 4 * 170 = 680. Since 680 is less than 3000, the shipping cost is 175. Therefore, the total is 680 + 175 = 855. I need to reply with exactly one JSON object."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"17bbdbd606e5b91a\",\"subtotal_cents\":680,\"shipping_cents\":175,\"total_cents\":855}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:42:54.985Z",
+          "duration_ms": 3378,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:42:58.364Z"
+        }
+      ],
+      "answer": "{\"token\":\"17bbdbd606e5b91a\",\"subtotal_cents\":680,\"shipping_cents\":175,\"total_cents\":855}"
+    },
+    {
+      "round": 1,
+      "edge": 3,
+      "from": "custom:devin",
+      "to": "claude_code",
+      "conversation": 13,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-2-acp-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:01.248Z"
+        },
+        {
+          "id": "handoff-2-acp-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I need to run the command and then reply DONE."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#6278e2f6a7fd4ec6871cd5e9624c1436",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#6278e2f6a7fd4ec6871cd5e9624c1436",
+              "output_preview": "{\"token\": \"4fead3cf683a7761\", \"qty\": 2, \"unit_cents\": 955}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "I've completed the task."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:01.248Z",
+          "duration_ms": 6277,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:43:07.526Z"
+        }
+      ],
+      "input": {
+        "token": "4fead3cf683a7761",
+        "qty": 2,
+        "unit_cents": 955
+      },
+      "expected": {
+        "token": "4fead3cf683a7761",
+        "subtotal_cents": 1910,
+        "shipping_cents": 175,
+        "total_cents": 2085
+      },
+      "switch_seconds": 3.309,
+      "receiver_turns": [
+        {
+          "id": "handoff-3-turn-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:14.744Z",
+          "completed_at": "2026-10-19T12:43:14.744Z"
+        },
+        {
+          "id": "handoff-3-turn-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:19.868Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 682,
+            "cache_creation_input_tokens": 2108,
+            "cache_read_input_tokens": 29347
+          },
+          "duration_ms": 5124,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:43:19.868Z",
+          "agent_message_id": "msg_011CgBcePQPB5APYJ6phmB2C"
+        },
+        {
+          "id": "handoff-3-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"4fead3cf683a7761\",\"subtotal_cents\":1910,\"shipping_cents\":175,\"total_cents\":2085}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:20.178Z",
+          "duration_ms": 5615,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:43:20.178Z",
+          "agent_message_id": "msg_011CgBcePQPB5APYJ6phmB2C"
+        }
+      ],
+      "answer": "\n{\"token\":\"4fead3cf683a7761\",\"subtotal_cents\":1910,\"shipping_cents\":175,\"total_cents\":2085}"
+    },
+    {
+      "round": 1,
+      "edge": 4,
+      "from": "claude_code",
+      "to": "custom:devin",
+      "conversation": 13,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-3-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:24.143Z",
+          "completed_at": "2026-10-19T12:43:24.143Z"
+        },
+        {
+          "id": "handoff-3-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_015sDbcCCSGfQekwiPfNwWuU",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_015sDbcCCSGfQekwiPfNwWuU",
+              "output_preview": "{\"token\": \"6f98bd44d754638a\", \"qty\": 4, \"unit_cents\": 998}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:26.929Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 153,
+            "cache_creation_input_tokens": 241,
+            "cache_read_input_tokens": 32137
+          },
+          "duration_ms": 4530,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:43:28.673Z",
+          "agent_message_id": "msg_011CgBcf4EymcfyTUtZ9Hr86"
+        },
+        {
+          "id": "handoff-3-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:30.156Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 215,
+            "cache_read_input_tokens": 32378
+          },
+          "duration_ms": 4966,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:43:30.156Z",
+          "agent_message_id": "msg_011CgBcfPBWG4NjoPm7pcjgP"
+        }
+      ],
+      "input": {
+        "token": "6f98bd44d754638a",
+        "qty": 4,
+        "unit_cents": 998
+      },
+      "expected": {
+        "token": "6f98bd44d754638a",
+        "subtotal_cents": 3992,
+        "shipping_cents": 0,
+        "total_cents": 3992
+      },
+      "switch_seconds": 6.172,
+      "receiver_turns": [
+        {
+          "id": "handoff-4-acp-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:40.020Z"
+        },
+        {
+          "id": "handoff-4-acp-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "The latest input has a subtotal of 3992, which is greater than 3000. This means shipping should be 0, and the total remains 3992."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"6f98bd44d754638a\",\"subtotal_cents\":3992,\"shipping_cents\":0,\"total_cents\":3992}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:40.020Z",
+          "duration_ms": 2701,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:43:42.722Z"
+        }
+      ],
+      "answer": "{\"token\":\"6f98bd44d754638a\",\"subtotal_cents\":3992,\"shipping_cents\":0,\"total_cents\":3992}"
+    },
+    {
+      "round": 1,
+      "edge": 5,
+      "from": "custom:devin",
+      "to": "codex",
+      "conversation": 13,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-4-acp-6",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:45.723Z"
+        },
+        {
+          "id": "handoff-4-acp-7",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I'm running the command now. I'll reply DONE when it finishes."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#3877d044bef64e17bb945e93aaf27dd0",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#3877d044bef64e17bb945e93aaf27dd0",
+              "output_preview": "{\"token\": \"3186c93d9bfbf75c\", \"qty\": 1, \"unit_cents\": 582}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "I've completed the task."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:43:45.723Z",
+          "duration_ms": 12226,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:43:57.950Z"
+        }
+      ],
+      "input": {
+        "token": "3186c93d9bfbf75c",
+        "qty": 1,
+        "unit_cents": 582
+      },
+      "expected": {
+        "token": "3186c93d9bfbf75c",
+        "subtotal_cents": 582,
+        "shipping_cents": 175,
+        "total_cents": 757
+      },
+      "switch_seconds": 3.922,
+      "receiver_turns": [
+        {
+          "id": "handoff-5-turn-5",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:11.401Z",
+          "completed_at": "2026-10-19T12:44:11.401Z"
+        },
+        {
+          "id": "handoff-5-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"3186c93d9bfbf75c\",\"subtotal_cents\":582,\"shipping_cents\":175,\"total_cents\":757}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:14.178Z",
+          "usage": {
+            "input_tokens": 2478,
+            "output_tokens": 37,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19456
+          },
+          "duration_ms": 2777,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:44:14.178Z"
+        }
+      ],
+      "answer": "{\"token\":\"3186c93d9bfbf75c\",\"subtotal_cents\":582,\"shipping_cents\":175,\"total_cents\":757}"
+    },
+    {
+      "round": 1,
+      "edge": 6,
+      "from": "codex",
+      "to": "claude_code",
+      "conversation": 13,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-5-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:17.027Z",
+          "completed_at": "2026-10-19T12:44:17.027Z"
+        },
+        {
+          "id": "handoff-5-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_7ab9b61c11d34f4a85542138dede3e67",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_7ab9b61c11d34f4a85542138dede3e67",
+              "output_preview": "{\"token\": \"e95289f2360bb248\", \"qty\": 1, \"unit_cents\": 633}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:19.686Z",
+          "usage": {
+            "input_tokens": 353,
+            "output_tokens": 78,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 21760
+          },
+          "duration_ms": 3600,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:44:20.627Z"
+        },
+        {
+          "id": "handoff-5-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:22.251Z",
+          "usage": {
+            "input_tokens": 353,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 21888
+          },
+          "duration_ms": 1624,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:44:22.251Z"
+        }
+      ],
+      "input": {
+        "token": "e95289f2360bb248",
+        "qty": 1,
+        "unit_cents": 633
+      },
+      "expected": {
+        "token": "e95289f2360bb248",
+        "subtotal_cents": 633,
+        "shipping_cents": 175,
+        "total_cents": 808
+      },
+      "switch_seconds": 6.037,
+      "receiver_turns": [
+        {
+          "id": "handoff-6-turn-10",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:32.371Z",
+          "completed_at": "2026-10-19T12:44:32.371Z"
+        },
+        {
+          "id": "handoff-6-turn-11",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:35.488Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 176,
+            "cache_creation_input_tokens": 3989,
+            "cache_read_input_tokens": 32598
+          },
+          "duration_ms": 3117,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:44:35.488Z",
+          "agent_message_id": "msg_011CgBck8HxHfQEzc5xbX8kK"
+        },
+        {
+          "id": "handoff-6-turn-12",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"e95289f2360bb248\",\"subtotal_cents\":633,\"shipping_cents\":175,\"total_cents\":808}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:35.620Z",
+          "duration_ms": 3948,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:44:35.620Z",
+          "agent_message_id": "msg_011CgBck8HxHfQEzc5xbX8kK"
+        }
+      ],
+      "answer": "\n{\"token\":\"e95289f2360bb248\",\"subtotal_cents\":633,\"shipping_cents\":175,\"total_cents\":808}"
+    },
+    {
+      "round": 2,
+      "edge": 1,
+      "from": "claude_code",
+      "to": "codex",
+      "conversation": 14,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:43.343Z",
+          "completed_at": "2026-10-19T12:44:43.343Z"
+        },
+        {
+          "id": "turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:45.324Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 210,
+            "cache_creation_input_tokens": 3567,
+            "cache_read_input_tokens": 25409
+          },
+          "duration_ms": 1981,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:44:45.324Z",
+          "agent_message_id": "msg_011CgBckvaXELJEb2V7yimXo"
+        },
+        {
+          "id": "turn-2",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_014rUBMSQX7dZTnqSwfDAXPH",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_014rUBMSQX7dZTnqSwfDAXPH",
+              "output_preview": "{\"token\": \"d7d5e5a779445dc9\", \"qty\": 5, \"unit_cents\": 825}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:45.918Z",
+          "duration_ms": 3044,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:44:48.368Z",
+          "agent_message_id": "msg_011CgBckvaXELJEb2V7yimXo"
+        },
+        {
+          "id": "turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:44:49.469Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 274,
+            "cache_read_input_tokens": 28976
+          },
+          "duration_ms": 5923,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:44:49.469Z",
+          "agent_message_id": "msg_011CgBcmFvsUUzVFsGTiLC6b"
+        }
+      ],
+      "input": {
+        "token": "d7d5e5a779445dc9",
+        "qty": 5,
+        "unit_cents": 825
+      },
+      "expected": {
+        "token": "d7d5e5a779445dc9",
+        "subtotal_cents": 4125,
+        "shipping_cents": 0,
+        "total_cents": 4125
+      },
+      "switch_seconds": 4.147,
+      "receiver_turns": [
+        {
+          "id": "handoff-1-turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:00.899Z",
+          "completed_at": "2026-10-19T12:45:00.899Z"
+        },
+        {
+          "id": "handoff-1-turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"d7d5e5a779445dc9\",\"subtotal_cents\":4125,\"shipping_cents\":0,\"total_cents\":4125}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:02.772Z",
+          "usage": {
+            "input_tokens": 7083,
+            "output_tokens": 39,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 12288
+          },
+          "duration_ms": 1873,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:45:02.772Z"
+        }
+      ],
+      "answer": "{\"token\":\"d7d5e5a779445dc9\",\"subtotal_cents\":4125,\"shipping_cents\":0,\"total_cents\":4125}"
+    },
+    {
+      "round": 2,
+      "edge": 2,
+      "from": "codex",
+      "to": "custom:devin",
+      "conversation": 14,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-1-turn-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:06.147Z",
+          "completed_at": "2026-10-19T12:45:06.147Z"
+        },
+        {
+          "id": "handoff-1-turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_f37d6874aa3146309c20f6ca7aa95e2e",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_f37d6874aa3146309c20f6ca7aa95e2e",
+              "output_preview": "{\"token\": \"2475a68aff883e35\", \"qty\": 1, \"unit_cents\": 942}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:08.647Z",
+          "usage": {
+            "input_tokens": 7264,
+            "output_tokens": 85,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 12288
+          },
+          "duration_ms": 2785,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:45:08.932Z"
+        },
+        {
+          "id": "handoff-1-turn-4",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:10.427Z",
+          "usage": {
+            "input_tokens": 359,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19328
+          },
+          "duration_ms": 1495,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:45:10.427Z"
+        }
+      ],
+      "input": {
+        "token": "2475a68aff883e35",
+        "qty": 1,
+        "unit_cents": 942
+      },
+      "expected": {
+        "token": "2475a68aff883e35",
+        "subtotal_cents": 942,
+        "shipping_cents": 175,
+        "total_cents": 1117
+      },
+      "switch_seconds": 6.3,
+      "receiver_turns": [
+        {
+          "id": "handoff-2-acp-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:19.974Z"
+        },
+        {
+          "id": "handoff-2-acp-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I need to output exactly one JSON object with keys token, subtotal, shipping, and total. The latest input token count is 2475. With quantity 1 and unit price 942, the subtotal is 942, shipping is 175, and the total is 1117. I must ensure no repetition and output only the object, as requested."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"2475a68aff883e35\",\"subtotal_cents\":942,\"shipping_cents\":175,\"total_cents\":1117}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:19.974Z",
+          "duration_ms": 5475,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:45:25.450Z"
+        }
+      ],
+      "answer": "{\"token\":\"2475a68aff883e35\",\"subtotal_cents\":942,\"shipping_cents\":175,\"total_cents\":1117}"
+    },
+    {
+      "round": 2,
+      "edge": 3,
+      "from": "custom:devin",
+      "to": "claude_code",
+      "conversation": 14,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-2-acp-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:28.351Z"
+        },
+        {
+          "id": "handoff-2-acp-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I need to execute the exact command the user provided. They've indicated \"DONE,\" so I shouldn't repeat any generated input or tokens. The next step is to run the execution, and then I'll be finished."
+            },
+            {
+              "type": "text",
+              "text": "I’ll generate this case’s settlement input with the specified command."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#dba294680d164650ba738b5607549138",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#dba294680d164650ba738b5607549138",
+              "output_preview": "{\"token\": \"7f988cee3259a69e\", \"qty\": 7, \"unit_cents\": 592}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "I've finished the task."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:28.351Z",
+          "duration_ms": 8574,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:45:36.927Z"
+        }
+      ],
+      "input": {
+        "token": "7f988cee3259a69e",
+        "qty": 7,
+        "unit_cents": 592
+      },
+      "expected": {
+        "token": "7f988cee3259a69e",
+        "subtotal_cents": 4144,
+        "shipping_cents": 0,
+        "total_cents": 4144
+      },
+      "switch_seconds": 2.287,
+      "receiver_turns": [
+        {
+          "id": "handoff-3-turn-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:43.270Z",
+          "completed_at": "2026-10-19T12:45:43.270Z"
+        },
+        {
+          "id": "handoff-3-turn-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:46.743Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 473,
+            "cache_creation_input_tokens": 2140,
+            "cache_read_input_tokens": 29255
+          },
+          "duration_ms": 3473,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:45:46.743Z",
+          "agent_message_id": "msg_011CgBcqKuqc4892zkFQpeK6"
+        },
+        {
+          "id": "handoff-3-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"7f988cee3259a69e\",\"subtotal_cents\":4144,\"shipping_cents\":0,\"total_cents\":4144}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:46.867Z",
+          "duration_ms": 3719,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:45:46.867Z",
+          "agent_message_id": "msg_011CgBcqKuqc4892zkFQpeK6"
+        }
+      ],
+      "answer": "\n{\"token\":\"7f988cee3259a69e\",\"subtotal_cents\":4144,\"shipping_cents\":0,\"total_cents\":4144}"
+    },
+    {
+      "round": 2,
+      "edge": 4,
+      "from": "claude_code",
+      "to": "custom:devin",
+      "conversation": 14,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-3-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:50.619Z",
+          "completed_at": "2026-10-19T12:45:50.619Z"
+        },
+        {
+          "id": "handoff-3-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_01Fd4SZQ2sThPWJp38SVQeBu",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_01Fd4SZQ2sThPWJp38SVQeBu",
+              "output_preview": "{\"token\": \"a823f6d01e5f8124\", \"qty\": 8, \"unit_cents\": 817}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:52.127Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 153,
+            "cache_creation_input_tokens": 241,
+            "cache_read_input_tokens": 31868
+          },
+          "duration_ms": 3538,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:45:54.157Z",
+          "agent_message_id": "msg_011CgBcqr54MGzXu5Qiovytv"
+        },
+        {
+          "id": "handoff-3-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:45:55.418Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 216,
+            "cache_read_input_tokens": 32109
+          },
+          "duration_ms": 3318,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:45:55.418Z",
+          "agent_message_id": "msg_011CgBcr7CtMzawv6Pcu4sQV"
+        }
+      ],
+      "input": {
+        "token": "a823f6d01e5f8124",
+        "qty": 8,
+        "unit_cents": 817
+      },
+      "expected": {
+        "token": "a823f6d01e5f8124",
+        "subtotal_cents": 6536,
+        "shipping_cents": 0,
+        "total_cents": 6536
+      },
+      "switch_seconds": 5.917,
+      "receiver_turns": [
+        {
+          "id": "handoff-4-acp-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:03.991Z"
+        },
+        {
+          "id": "handoff-4-acp-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "The latest token, a823, shows a quantity of 8 units and a subtotal of 6536. Shipping is 0, making the total 6536. I need to ensure the output is exactly JSON, and I won't be using any tools for this."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"a823f6d01e5f8124\",\"subtotal_cents\":6536,\"shipping_cents\":0,\"total_cents\":6536}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:03.991Z",
+          "duration_ms": 3735,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:46:07.728Z"
+        }
+      ],
+      "answer": "{\"token\":\"a823f6d01e5f8124\",\"subtotal_cents\":6536,\"shipping_cents\":0,\"total_cents\":6536}"
+    },
+    {
+      "round": 2,
+      "edge": 5,
+      "from": "custom:devin",
+      "to": "codex",
+      "conversation": 14,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-4-acp-6",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:10.399Z"
+        },
+        {
+          "id": "handoff-4-acp-7",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I need to run the exact command to finish this."
+            },
+            {
+              "type": "text",
+              "text": "I’ll generate this case’s settlement input with the specified command."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#9ce84e31357644f58aa31999370f7339",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#9ce84e31357644f58aa31999370f7339",
+              "output_preview": "{\"token\": \"e5722a25fac08b34\", \"qty\": 6, \"unit_cents\": 377}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "It looks like I've finished the task."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:10.399Z",
+          "duration_ms": 4079,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:46:14.479Z"
+        }
+      ],
+      "input": {
+        "token": "e5722a25fac08b34",
+        "qty": 6,
+        "unit_cents": 377
+      },
+      "expected": {
+        "token": "e5722a25fac08b34",
+        "subtotal_cents": 2262,
+        "shipping_cents": 175,
+        "total_cents": 2437
+      },
+      "switch_seconds": 9.691,
+      "receiver_turns": [
+        {
+          "id": "handoff-5-turn-5",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:34.067Z",
+          "completed_at": "2026-10-19T12:46:34.067Z"
+        },
+        {
+          "id": "handoff-5-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"e5722a25fac08b34\",\"subtotal_cents\":2262,\"shipping_cents\":175,\"total_cents\":2437}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:36.939Z",
+          "usage": {
+            "input_tokens": 2505,
+            "output_tokens": 37,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19456
+          },
+          "duration_ms": 2872,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:46:36.939Z"
+        }
+      ],
+      "answer": "{\"token\":\"e5722a25fac08b34\",\"subtotal_cents\":2262,\"shipping_cents\":175,\"total_cents\":2437}"
+    },
+    {
+      "round": 2,
+      "edge": 6,
+      "from": "codex",
+      "to": "claude_code",
+      "conversation": 14,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-5-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:40.014Z",
+          "completed_at": "2026-10-19T12:46:40.014Z"
+        },
+        {
+          "id": "handoff-5-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_9950641c80a140fcbb68a980f9210d1c",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_9950641c80a140fcbb68a980f9210d1c",
+              "output_preview": "{\"token\": \"b9f2063cd257aa8c\", \"qty\": 1, \"unit_cents\": 288}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:42.978Z",
+          "usage": {
+            "input_tokens": 2940,
+            "output_tokens": 85,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19200
+          },
+          "duration_ms": 3308,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:46:43.322Z"
+        },
+        {
+          "id": "handoff-5-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:45.854Z",
+          "usage": {
+            "input_tokens": 15109,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 7168
+          },
+          "duration_ms": 2532,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:46:45.854Z"
+        }
+      ],
+      "input": {
+        "token": "b9f2063cd257aa8c",
+        "qty": 1,
+        "unit_cents": 288
+      },
+      "expected": {
+        "token": "b9f2063cd257aa8c",
+        "subtotal_cents": 288,
+        "shipping_cents": 175,
+        "total_cents": 463
+      },
+      "switch_seconds": 2.996,
+      "receiver_turns": [
+        {
+          "id": "handoff-6-turn-10",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:52.933Z",
+          "completed_at": "2026-10-19T12:46:52.933Z"
+        },
+        {
+          "id": "handoff-6-turn-11",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:56.495Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 343,
+            "cache_creation_input_tokens": 4044,
+            "cache_read_input_tokens": 32330
+          },
+          "duration_ms": 3562,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:46:56.495Z",
+          "agent_message_id": "msg_011CgBcvY4EGeHSxSKpQUApb"
+        },
+        {
+          "id": "handoff-6-turn-12",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"b9f2063cd257aa8c\",\"subtotal_cents\":288,\"shipping_cents\":175,\"total_cents\":463}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:46:56.847Z",
+          "duration_ms": 4042,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:46:56.847Z",
+          "agent_message_id": "msg_011CgBcvY4EGeHSxSKpQUApb"
+        }
+      ],
+      "answer": "\n{\"token\":\"b9f2063cd257aa8c\",\"subtotal_cents\":288,\"shipping_cents\":175,\"total_cents\":463}"
+    },
+    {
+      "round": 3,
+      "edge": 1,
+      "from": "claude_code",
+      "to": "codex",
+      "conversation": 15,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:03.493Z",
+          "completed_at": "2026-10-19T12:47:03.493Z"
+        },
+        {
+          "id": "turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:05.997Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 283,
+            "cache_creation_input_tokens": 3565,
+            "cache_read_input_tokens": 25409
+          },
+          "duration_ms": 2504,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:47:05.997Z",
+          "agent_message_id": "msg_011CgBcwFMvC21szSzsaJ7aZ"
+        },
+        {
+          "id": "turn-2",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_01P37zMU96AUeEzsVdtdZpLM",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_01P37zMU96AUeEzsVdtdZpLM",
+              "output_preview": "{\"token\": \"c996a6b5a5083234\", \"qty\": 3, \"unit_cents\": 640}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:06.426Z",
+          "duration_ms": 1659,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:47:07.656Z",
+          "agent_message_id": "msg_011CgBcwFMvC21szSzsaJ7aZ"
+        },
+        {
+          "id": "turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:08.863Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 345,
+            "cache_read_input_tokens": 28974
+          },
+          "duration_ms": 4711,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:47:08.863Z",
+          "agent_message_id": "msg_011CgBcwXM6M54AZURevHC4M"
+        }
+      ],
+      "input": {
+        "token": "c996a6b5a5083234",
+        "qty": 3,
+        "unit_cents": 640
+      },
+      "expected": {
+        "token": "c996a6b5a5083234",
+        "subtotal_cents": 1920,
+        "shipping_cents": 175,
+        "total_cents": 2095
+      },
+      "switch_seconds": 2.141,
+      "receiver_turns": [
+        {
+          "id": "handoff-1-turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:20.261Z",
+          "completed_at": "2026-10-19T12:47:20.261Z"
+        },
+        {
+          "id": "handoff-1-turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"c996a6b5a5083234\",\"subtotal_cents\":1920,\"shipping_cents\":175,\"total_cents\":2095}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:22.799Z",
+          "usage": {
+            "input_tokens": 7085,
+            "output_tokens": 38,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 12288
+          },
+          "duration_ms": 2538,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:47:22.799Z"
+        }
+      ],
+      "answer": "{\"token\":\"c996a6b5a5083234\",\"subtotal_cents\":1920,\"shipping_cents\":175,\"total_cents\":2095}"
+    },
+    {
+      "round": 3,
+      "edge": 2,
+      "from": "codex",
+      "to": "custom:devin",
+      "conversation": 15,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-1-turn-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:25.363Z",
+          "completed_at": "2026-10-19T12:47:25.363Z"
+        },
+        {
+          "id": "handoff-1-turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "I’ll run the exact command you provided and leave the calculation for the next agent."
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:26.803Z",
+          "duration_ms": 1440,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:47:26.803Z"
+        },
+        {
+          "id": "handoff-1-turn-4",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_3973aaca655b4ad080c94e2b264ff19c",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_3973aaca655b4ad080c94e2b264ff19c",
+              "output_preview": "{\"token\": \"22996e3a2c408ec5\", \"qty\": 5, \"unit_cents\": 880}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:27.183Z",
+          "usage": {
+            "input_tokens": 353,
+            "output_tokens": 103,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19200
+          },
+          "duration_ms": 629,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:47:27.432Z"
+        },
+        {
+          "id": "handoff-1-turn-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:28.464Z",
+          "usage": {
+            "input_tokens": 380,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19328
+          },
+          "duration_ms": 1032,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:47:28.464Z"
+        }
+      ],
+      "input": {
+        "token": "22996e3a2c408ec5",
+        "qty": 5,
+        "unit_cents": 880
+      },
+      "expected": {
+        "token": "22996e3a2c408ec5",
+        "subtotal_cents": 4400,
+        "shipping_cents": 0,
+        "total_cents": 4400
+      },
+      "switch_seconds": 6.305,
+      "receiver_turns": [
+        {
+          "id": "handoff-2-acp-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:37.085Z"
+        },
+        {
+          "id": "handoff-2-acp-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I've calculated the input, and it seems correct: a token with ID `22996e3a2c408ec5`, quantity 5, and unit price of 880 cents, totaling 4400. Shipping is free because the subtotal exceeds 3000, making the final total 4400. I need to ensure the output is exactly one JSON object."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"22996e3a2c408ec5\",\"subtotal_cents\":4400,\"shipping_cents\":0,\"total_cents\":4400}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:37.085Z",
+          "duration_ms": 3978,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:47:41.064Z"
+        }
+      ],
+      "answer": "{\"token\":\"22996e3a2c408ec5\",\"subtotal_cents\":4400,\"shipping_cents\":0,\"total_cents\":4400}"
+    },
+    {
+      "round": 3,
+      "edge": 3,
+      "from": "custom:devin",
+      "to": "claude_code",
+      "conversation": 15,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-2-acp-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:43.711Z"
+        },
+        {
+          "id": "handoff-2-acp-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I'm running the exact command now, and then I'll be done."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#9f457f0822874fb1b0568545d073361d",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#9f457f0822874fb1b0568545d073361d",
+              "output_preview": "{\"token\": \"ceaaa13447acd587\", \"qty\": 1, \"unit_cents\": 114}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:43.711Z",
+          "duration_ms": 5498,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:47:49.209Z"
+        }
+      ],
+      "input": {
+        "token": "ceaaa13447acd587",
+        "qty": 1,
+        "unit_cents": 114
+      },
+      "expected": {
+        "token": "ceaaa13447acd587",
+        "subtotal_cents": 114,
+        "shipping_cents": 175,
+        "total_cents": 289
+      },
+      "switch_seconds": 2.974,
+      "receiver_turns": [
+        {
+          "id": "handoff-3-turn-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:47:56.129Z",
+          "completed_at": "2026-10-19T12:47:56.129Z"
+        },
+        {
+          "id": "handoff-3-turn-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:00.114Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 532,
+            "cache_creation_input_tokens": 2153,
+            "cache_read_input_tokens": 29324
+          },
+          "duration_ms": 3985,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:48:00.114Z",
+          "agent_message_id": "msg_011CgBd1A9VwNdckur2tcJwN"
+        },
+        {
+          "id": "handoff-3-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"ceaaa13447acd587\",\"subtotal_cents\":114,\"shipping_cents\":175,\"total_cents\":289}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:00.418Z",
+          "duration_ms": 5064,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:48:00.418Z",
+          "agent_message_id": "msg_011CgBd1A9VwNdckur2tcJwN"
+        }
+      ],
+      "answer": "\n{\"token\":\"ceaaa13447acd587\",\"subtotal_cents\":114,\"shipping_cents\":175,\"total_cents\":289}"
+    },
+    {
+      "round": 3,
+      "edge": 4,
+      "from": "claude_code",
+      "to": "custom:devin",
+      "conversation": 15,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-3-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:04.983Z",
+          "completed_at": "2026-10-19T12:48:04.983Z"
+        },
+        {
+          "id": "handoff-3-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:08.251Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 543,
+            "cache_creation_input_tokens": 241,
+            "cache_read_input_tokens": 32009
+          },
+          "duration_ms": 3268,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:48:08.251Z",
+          "agent_message_id": "msg_011CgBd1kavWFFTBhiHd83kg"
+        },
+        {
+          "id": "handoff-3-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_01PCKgAre8BuGioxLmFj9cvt",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_01PCKgAre8BuGioxLmFj9cvt",
+              "output_preview": "{\"token\": \"d81457c5793c0b46\", \"qty\": 1, \"unit_cents\": 940}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:08.613Z",
+          "duration_ms": 2196,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:48:10.447Z",
+          "agent_message_id": "msg_011CgBd1kavWFFTBhiHd83kg"
+        },
+        {
+          "id": "handoff-3-turn-10",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:11.521Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 605,
+            "cache_read_input_tokens": 32250
+          },
+          "duration_ms": 5266,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:48:11.521Z",
+          "agent_message_id": "msg_011CgBd29qvCec7mRTfP4eJQ"
+        }
+      ],
+      "input": {
+        "token": "d81457c5793c0b46",
+        "qty": 1,
+        "unit_cents": 940
+      },
+      "expected": {
+        "token": "d81457c5793c0b46",
+        "subtotal_cents": 940,
+        "shipping_cents": 175,
+        "total_cents": 1115
+      },
+      "switch_seconds": 6.835,
+      "receiver_turns": [
+        {
+          "id": "handoff-4-acp-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:21.647Z"
+        },
+        {
+          "id": "handoff-4-acp-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "The subtotal is 940, which is less than 3000, so shipping is 175. This brings the total to 1115."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"d81457c5793c0b46\",\"subtotal_cents\":940,\"shipping_cents\":175,\"total_cents\":1115}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:21.647Z",
+          "duration_ms": 2954,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:48:24.601Z"
+        }
+      ],
+      "answer": "{\"token\":\"d81457c5793c0b46\",\"subtotal_cents\":940,\"shipping_cents\":175,\"total_cents\":1115}"
+    },
+    {
+      "round": 3,
+      "edge": 5,
+      "from": "custom:devin",
+      "to": "codex",
+      "conversation": 15,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-4-acp-6",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:27.264Z"
+        },
+        {
+          "id": "handoff-4-acp-7",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I'm running the command now."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#8b9c70724bcd4d7aac7ec6db0881f064",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#8b9c70724bcd4d7aac7ec6db0881f064",
+              "output_preview": "{\"token\": \"6fbf8f1f277836b9\", \"qty\": 3, \"unit_cents\": 982}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:27.264Z",
+          "duration_ms": 4816,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:48:32.081Z"
+        }
+      ],
+      "input": {
+        "token": "6fbf8f1f277836b9",
+        "qty": 3,
+        "unit_cents": 982
+      },
+      "expected": {
+        "token": "6fbf8f1f277836b9",
+        "subtotal_cents": 2946,
+        "shipping_cents": 175,
+        "total_cents": 3121
+      },
+      "switch_seconds": 5.165,
+      "receiver_turns": [
+        {
+          "id": "handoff-5-turn-6",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:46.047Z",
+          "completed_at": "2026-10-19T12:48:46.047Z"
+        },
+        {
+          "id": "handoff-5-turn-7",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"6fbf8f1f277836b9\",\"subtotal_cents\":2946,\"shipping_cents\":175,\"total_cents\":3121}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:48.570Z",
+          "usage": {
+            "input_tokens": 2389,
+            "output_tokens": 39,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19584
+          },
+          "duration_ms": 2523,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:48:48.570Z"
+        }
+      ],
+      "answer": "{\"token\":\"6fbf8f1f277836b9\",\"subtotal_cents\":2946,\"shipping_cents\":175,\"total_cents\":3121}"
+    },
+    {
+      "round": 3,
+      "edge": 6,
+      "from": "codex",
+      "to": "claude_code",
+      "conversation": 15,
+      "success": false,
+      "producer_turns": [
+        {
+          "id": "handoff-5-turn-8",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:52.744Z",
+          "completed_at": "2026-10-19T12:48:52.744Z"
+        },
+        {
+          "id": "handoff-5-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_dfb42b7357ac407e80136a74021a463d",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_dfb42b7357ac407e80136a74021a463d",
+              "output_preview": "{\"token\": \"abf322803a51efe7\", \"qty\": 7, \"unit_cents\": 183}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:54.732Z",
+          "usage": {
+            "input_tokens": 394,
+            "output_tokens": 79,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 21760
+          },
+          "duration_ms": 5669,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:48:58.413Z"
+        },
+        {
+          "id": "handoff-5-turn-10",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:48:59.534Z",
+          "usage": {
+            "input_tokens": 267,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 22016
+          },
+          "duration_ms": 1121,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:48:59.534Z"
+        }
+      ],
+      "input": {
+        "token": "abf322803a51efe7",
+        "qty": 7,
+        "unit_cents": 183
+      },
+      "expected": {
+        "token": "abf322803a51efe7",
+        "subtotal_cents": 1281,
+        "shipping_cents": 175,
+        "total_cents": 1456
+      },
+      "switch_seconds": 3.974,
+      "receiver_turns": [
+        {
+          "id": "handoff-6-turn-11",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:08.616Z",
+          "completed_at": "2026-10-19T12:49:08.616Z"
+        },
+        {
+          "id": "handoff-6-turn-12",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:15.541Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 659,
+            "cache_creation_input_tokens": 4035,
+            "cache_read_input_tokens": 32860
+          },
+          "duration_ms": 6925,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:49:15.541Z",
+          "agent_message_id": "msg_011CgBd6dTCDgizXkUn9y3fn"
+        },
+        {
+          "id": "handoff-6-turn-13",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"d81457c5793c0b46\",\"subtotal_cents\":940,\"shipping_cents\":175,\"total_cents\":1115}\n\nNote: this is the only generated input I actually produced in this session. The transferred history also lists later results (such as `abf322803a51efe7`) that I did not generate here, so I did not use them."
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:17.147Z",
+          "duration_ms": 8720,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:49:17.147Z",
+          "agent_message_id": "msg_011CgBd6dTCDgizXkUn9y3fn"
+        }
+      ],
+      "answer": "\n{\"token\":\"d81457c5793c0b46\",\"subtotal_cents\":940,\"shipping_cents\":175,\"total_cents\":1115}\n\nNote: this is the only generated input I actually produced in this session. The transferred history also lists later results (such as `abf322803a51efe7`) that I did not generate here, so I did not use them.",
+      "failure": "receiver JSON did not exactly match expected result"
+    },
+    {
+      "round": 4,
+      "edge": 1,
+      "from": "claude_code",
+      "to": "codex",
+      "conversation": 16,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:24.305Z",
+          "completed_at": "2026-10-19T12:49:24.305Z"
+        },
+        {
+          "id": "turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:28.713Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 361,
+            "cache_creation_input_tokens": 3567,
+            "cache_read_input_tokens": 25409
+          },
+          "duration_ms": 4408,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:49:28.713Z",
+          "agent_message_id": "msg_011CgBd7m5ccWkq2k1qcAYmr"
+        },
+        {
+          "id": "turn-2",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_01AaHgxTafy5VTCRuwAFXq3u",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_01AaHgxTafy5VTCRuwAFXq3u",
+              "output_preview": "{\"token\": \"8dfe6bee63831863\", \"qty\": 1, \"unit_cents\": 234}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:29.120Z",
+          "duration_ms": 2127,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:49:30.840Z",
+          "agent_message_id": "msg_011CgBd7m5ccWkq2k1qcAYmr"
+        },
+        {
+          "id": "turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:32.171Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 423,
+            "cache_read_input_tokens": 28976
+          },
+          "duration_ms": 7571,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:49:32.171Z",
+          "agent_message_id": "msg_011CgBd86iozv4KDry57eLdp"
+        }
+      ],
+      "input": {
+        "token": "8dfe6bee63831863",
+        "qty": 1,
+        "unit_cents": 234
+      },
+      "expected": {
+        "token": "8dfe6bee63831863",
+        "subtotal_cents": 234,
+        "shipping_cents": 175,
+        "total_cents": 409
+      },
+      "switch_seconds": 4.219,
+      "receiver_turns": [
+        {
+          "id": "handoff-1-turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:45.139Z",
+          "completed_at": "2026-10-19T12:49:45.139Z"
+        },
+        {
+          "id": "handoff-1-turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"8dfe6bee63831863\",\"subtotal_cents\":234,\"shipping_cents\":175,\"total_cents\":409}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:47.953Z",
+          "usage": {
+            "input_tokens": 11312,
+            "output_tokens": 34,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 8064
+          },
+          "duration_ms": 2814,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:49:47.953Z"
+        }
+      ],
+      "answer": "{\"token\":\"8dfe6bee63831863\",\"subtotal_cents\":234,\"shipping_cents\":175,\"total_cents\":409}"
+    },
+    {
+      "round": 4,
+      "edge": 2,
+      "from": "codex",
+      "to": "custom:devin",
+      "conversation": 16,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-1-turn-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:50.297Z",
+          "completed_at": "2026-10-19T12:49:50.297Z"
+        },
+        {
+          "id": "handoff-1-turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "I’ll run the exact input command, then leave the calculation for the next agent as requested."
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:51.971Z",
+          "duration_ms": 1674,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:49:51.971Z"
+        },
+        {
+          "id": "handoff-1-turn-4",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_97fa808487c74fedb7425b1b7aa3319a",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_97fa808487c74fedb7425b1b7aa3319a",
+              "output_preview": "{\"token\": \"f1407c40eb84bc74\", \"qty\": 8, \"unit_cents\": 748}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:53.036Z",
+          "usage": {
+            "input_tokens": 352,
+            "output_tokens": 105,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19200
+          },
+          "duration_ms": 1779,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:49:53.750Z"
+        },
+        {
+          "id": "handoff-1-turn-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:49:55.325Z",
+          "usage": {
+            "input_tokens": 380,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19328
+          },
+          "duration_ms": 1575,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:49:55.325Z"
+        }
+      ],
+      "input": {
+        "token": "f1407c40eb84bc74",
+        "qty": 8,
+        "unit_cents": 748
+      },
+      "expected": {
+        "token": "f1407c40eb84bc74",
+        "subtotal_cents": 5984,
+        "shipping_cents": 0,
+        "total_cents": 5984
+      },
+      "switch_seconds": 6.3,
+      "receiver_turns": [
+        {
+          "id": "handoff-2-acp-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:04.168Z"
+        },
+        {
+          "id": "handoff-2-acp-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I need to output a JSON object with specific keys: token, subtotal_cents, shipping_cents, and total_cents. The latest tool result gives me a token and quantity, which I'll use to calculate the subtotal. Shipping is free since the subtotal exceeds 3000 cents. I must include the token in the output, even though I previously thought it wasn't needed."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"f1407c40eb84bc74\",\"subtotal_cents\":5984,\"shipping_cents\":0,\"total_cents\":5984}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:04.168Z",
+          "duration_ms": 5368,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:50:09.537Z"
+        }
+      ],
+      "answer": "{\"token\":\"f1407c40eb84bc74\",\"subtotal_cents\":5984,\"shipping_cents\":0,\"total_cents\":5984}"
+    },
+    {
+      "round": 4,
+      "edge": 3,
+      "from": "custom:devin",
+      "to": "claude_code",
+      "conversation": 16,
+      "success": false,
+      "producer_turns": [
+        {
+          "id": "handoff-2-acp-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:11.827Z"
+        },
+        {
+          "id": "handoff-2-acp-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I need to execute the exact command the user provided. They've indicated the final output is \"DONE\" and I shouldn't repeat it, nor should I create any files. This means I must use a tool to execute the command directly."
+            },
+            {
+              "type": "text",
+              "text": "I’ll run the exact input command and leave the calculation to the next agent."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_450bd3f091b84d6d8eea4dcb#04b87fe140ee43f7997efb3bb351210d",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_450bd3f091b84d6d8eea4dcb#04b87fe140ee43f7997efb3bb351210d",
+              "output_preview": "{\"token\": \"295049ad07f2f278\", \"qty\": 7, \"unit_cents\": 179}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "I need to finalize this."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:11.827Z",
+          "duration_ms": 6773,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:50:18.600Z"
+        }
+      ],
+      "input": {
+        "token": "295049ad07f2f278",
+        "qty": 7,
+        "unit_cents": 179
+      },
+      "expected": {
+        "token": "295049ad07f2f278",
+        "subtotal_cents": 1253,
+        "shipping_cents": 175,
+        "total_cents": 1428
+      },
+      "switch_seconds": 3.367,
+      "receiver_turns": [
+        {
+          "id": "handoff-3-turn-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:25.833Z",
+          "completed_at": "2026-10-19T12:50:25.833Z"
+        },
+        {
+          "id": "handoff-3-turn-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:29.945Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 776,
+            "cache_creation_input_tokens": 2179,
+            "cache_read_input_tokens": 29404
+          },
+          "duration_ms": 4112,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:50:29.945Z",
+          "agent_message_id": "msg_011CgBdCAMh6sdA2T3H55ceM"
+        },
+        {
+          "id": "handoff-3-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "I didn't produce the JSON reply. The pasted block is a transcript from another session that ends with an instruction to reply with a JSON object and make no tool calls. Your message only set the model, so I'm not treating that instruction as yours.\n\nThe transcript also doesn't match this session. Its settlement inputs are not from my own command runs here. In this session, the only generated input is the one I got earlier: token `8dfe6bee63831863`, qty 1, unit_cents 234. For that case, subtotal is 234, shipping is 175, and total is 409.\n\nIf you want me to finish a settlement calculation, tell me which input to use. I can compute it from the rule you gave, or from the input you name."
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:31.072Z",
+          "duration_ms": 5351,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:50:31.072Z",
+          "agent_message_id": "msg_011CgBdCAMh6sdA2T3H55ceM"
+        }
+      ],
+      "answer": "\nI didn't produce the JSON reply. The pasted block is a transcript from another session that ends with an instruction to reply with a JSON object and make no tool calls. Your message only set the model, so I'm not treating that instruction as yours.\n\nThe transcript also doesn't match this session. Its settlement inputs are not from my own command runs here. In this session, the only generated input is the one I got earlier: token `8dfe6bee63831863`, qty 1, unit_cents 234. For that case, subtotal is 234, shipping is 175, and total is 409.\n\nIf you want me to finish a settlement calculation, tell me which input to use. I can compute it from the rule you gave, or from the input you name.",
+      "failure": "receiver JSON did not exactly match expected result"
+    },
+    {
+      "round": 4,
+      "edge": 4,
+      "from": "claude_code",
+      "to": "custom:devin",
+      "conversation": 16,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-3-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:35.145Z",
+          "completed_at": "2026-10-19T12:50:35.145Z"
+        },
+        {
+          "id": "handoff-3-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_01Nmd5kcLysdWrGVZZtcYNcS",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_01Nmd5kcLysdWrGVZZtcYNcS",
+              "output_preview": "{\"token\": \"4d66b773e48e24a6\", \"qty\": 2, \"unit_cents\": 324}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:36.798Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 153,
+            "cache_creation_input_tokens": 241,
+            "cache_read_input_tokens": 32359
+          },
+          "duration_ms": 3407,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:50:38.552Z",
+          "agent_message_id": "msg_011CgBdCpkGYiPjYjFnQy6wc"
+        },
+        {
+          "id": "handoff-3-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:39.583Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 216,
+            "cache_read_input_tokens": 32600
+          },
+          "duration_ms": 3428,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:50:39.583Z",
+          "agent_message_id": "msg_011CgBdD56DgDmTj1N9rdQuL"
+        }
+      ],
+      "input": {
+        "token": "4d66b773e48e24a6",
+        "qty": 2,
+        "unit_cents": 324
+      },
+      "expected": {
+        "token": "4d66b773e48e24a6",
+        "subtotal_cents": 648,
+        "shipping_cents": 175,
+        "total_cents": 823
+      },
+      "switch_seconds": 5.341,
+      "receiver_turns": [
+        {
+          "id": "handoff-4-acp-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:48.127Z"
+        },
+        {
+          "id": "handoff-4-acp-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "The latest tool result shows a quantity of 4d66b773e48e24a6, which doesn't seem right for a quantity. It looks like the unit and quantity might have been swapped. The subtotal is 648, shipping is 175, and the total is 823. No tools were used for this calculation."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"4d66b773e48e24a6\",\"subtotal_cents\":648,\"shipping_cents\":175,\"total_cents\":823}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:48.127Z",
+          "duration_ms": 3803,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:50:51.933Z"
+        }
+      ],
+      "answer": "{\"token\":\"4d66b773e48e24a6\",\"subtotal_cents\":648,\"shipping_cents\":175,\"total_cents\":823}"
+    },
+    {
+      "round": 4,
+      "edge": 5,
+      "from": "custom:devin",
+      "to": "codex",
+      "conversation": 16,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-4-acp-6",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:54.786Z"
+        },
+        {
+          "id": "handoff-4-acp-7",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I'm running the exact command now. It should be the final step."
+            },
+            {
+              "type": "text",
+              "text": "I’ll run the exact input command and leave the calculation to the next agent."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_8ff1273036a742b9beb703d3#73b30e33aeee4062ba814f89aa6c36b2",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_8ff1273036a742b9beb703d3#73b30e33aeee4062ba814f89aa6c36b2",
+              "output_preview": "{\"token\": \"791f946fdad14229\", \"qty\": 3, \"unit_cents\": 592}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "The task is complete."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:50:54.786Z",
+          "duration_ms": 8186,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:51:02.974Z"
+        }
+      ],
+      "input": {
+        "token": "791f946fdad14229",
+        "qty": 3,
+        "unit_cents": 592
+      },
+      "expected": {
+        "token": "791f946fdad14229",
+        "subtotal_cents": 1776,
+        "shipping_cents": 175,
+        "total_cents": 1951
+      },
+      "switch_seconds": 2.377,
+      "receiver_turns": [
+        {
+          "id": "handoff-5-turn-6",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:14.577Z",
+          "completed_at": "2026-10-19T12:51:14.577Z"
+        },
+        {
+          "id": "handoff-5-turn-7",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"791f946fdad14229\",\"subtotal_cents\":1776,\"shipping_cents\":175,\"total_cents\":1951}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:17.796Z",
+          "usage": {
+            "input_tokens": 2561,
+            "output_tokens": 35,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19584
+          },
+          "duration_ms": 3219,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:51:17.796Z"
+        }
+      ],
+      "answer": "{\"token\":\"791f946fdad14229\",\"subtotal_cents\":1776,\"shipping_cents\":175,\"total_cents\":1951}"
+    },
+    {
+      "round": 4,
+      "edge": 6,
+      "from": "codex",
+      "to": "claude_code",
+      "conversation": 16,
+      "success": false,
+      "producer_turns": [
+        {
+          "id": "handoff-5-turn-8",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:21.430Z",
+          "completed_at": "2026-10-19T12:51:21.430Z"
+        },
+        {
+          "id": "handoff-5-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_51898dba37e14212979c679b7d57b8d1",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_51898dba37e14212979c679b7d57b8d1",
+              "output_preview": "{\"token\": \"41fd5be84da222ee\", \"qty\": 4, \"unit_cents\": 754}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:23Z",
+          "usage": {
+            "input_tokens": 14258,
+            "output_tokens": 79,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 8064
+          },
+          "duration_ms": 2376,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:51:23.806Z"
+        },
+        {
+          "id": "handoff-5-turn-10",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:25.342Z",
+          "usage": {
+            "input_tokens": 307,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 22144
+          },
+          "duration_ms": 1536,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:51:25.342Z"
+        }
+      ],
+      "input": {
+        "token": "41fd5be84da222ee",
+        "qty": 4,
+        "unit_cents": 754
+      },
+      "expected": {
+        "token": "41fd5be84da222ee",
+        "subtotal_cents": 3016,
+        "shipping_cents": 0,
+        "total_cents": 3016
+      },
+      "switch_seconds": 2.918,
+      "receiver_turns": [
+        {
+          "id": "handoff-6-turn-10",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:32.583Z",
+          "completed_at": "2026-10-19T12:51:32.583Z"
+        },
+        {
+          "id": "handoff-6-turn-11",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:36.875Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 712,
+            "cache_creation_input_tokens": 4262,
+            "cache_read_input_tokens": 32821
+          },
+          "duration_ms": 4292,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:51:36.875Z",
+          "agent_message_id": "msg_011CgBdH5qVEppDhkdapspP6"
+        },
+        {
+          "id": "handoff-6-turn-12",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "I didn't produce the JSON reply. The pasted block is another session's transcript that ends with an instruction to reply with a JSON object and make no tool calls. Your message only set the model, so I'm not treating that instruction as yours.\n\nThe most recent input generated in this session is from my last run, before this message. Its figures don't match the transcript's values. If you want me to compute a total, tell me which input to use, or say that the latest run from this session should be the one I use."
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:38.059Z",
+          "duration_ms": 5573,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:51:38.059Z",
+          "agent_message_id": "msg_011CgBdH5qVEppDhkdapspP6"
+        }
+      ],
+      "answer": "\nI didn't produce the JSON reply. The pasted block is another session's transcript that ends with an instruction to reply with a JSON object and make no tool calls. Your message only set the model, so I'm not treating that instruction as yours.\n\nThe most recent input generated in this session is from my last run, before this message. Its figures don't match the transcript's values. If you want me to compute a total, tell me which input to use, or say that the latest run from this session should be the one I use.",
+      "failure": "receiver JSON did not exactly match expected result"
+    },
+    {
+      "round": 5,
+      "edge": 1,
+      "from": "claude_code",
+      "to": "codex",
+      "conversation": 17,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:44.863Z",
+          "completed_at": "2026-10-19T12:51:44.863Z"
+        },
+        {
+          "id": "turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:47.620Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 329,
+            "cache_creation_input_tokens": 3565,
+            "cache_read_input_tokens": 25409
+          },
+          "duration_ms": 2757,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:51:47.620Z",
+          "agent_message_id": "msg_011CgBdHyn8N9dFREpMmtubR"
+        },
+        {
+          "id": "turn-2",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_01NzZq1nUX32c42EJxYMA5Ff",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_01NzZq1nUX32c42EJxYMA5Ff",
+              "output_preview": "{\"token\": \"397660cba0f22a14\", \"qty\": 6, \"unit_cents\": 568}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:47.998Z",
+          "duration_ms": 1416,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:51:49.036Z",
+          "agent_message_id": "msg_011CgBdHyn8N9dFREpMmtubR"
+        },
+        {
+          "id": "turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:51:50.120Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 390,
+            "cache_read_input_tokens": 28974
+          },
+          "duration_ms": 4766,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:51:50.120Z",
+          "agent_message_id": "msg_011CgBdJGQVjmcxcoMnBPj1G"
+        }
+      ],
+      "input": {
+        "token": "397660cba0f22a14",
+        "qty": 6,
+        "unit_cents": 568
+      },
+      "expected": {
+        "token": "397660cba0f22a14",
+        "subtotal_cents": 3408,
+        "shipping_cents": 0,
+        "total_cents": 3408
+      },
+      "switch_seconds": 4.138,
+      "receiver_turns": [
+        {
+          "id": "handoff-1-turn-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:03.522Z",
+          "completed_at": "2026-10-19T12:52:03.522Z"
+        },
+        {
+          "id": "handoff-1-turn-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"397660cba0f22a14\",\"subtotal_cents\":3408,\"shipping_cents\":0,\"total_cents\":3408}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:05.205Z",
+          "usage": {
+            "input_tokens": 7089,
+            "output_tokens": 37,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 12288
+          },
+          "duration_ms": 1683,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:52:05.205Z"
+        }
+      ],
+      "answer": "{\"token\":\"397660cba0f22a14\",\"subtotal_cents\":3408,\"shipping_cents\":0,\"total_cents\":3408}"
+    },
+    {
+      "round": 5,
+      "edge": 2,
+      "from": "codex",
+      "to": "custom:devin",
+      "conversation": 17,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-1-turn-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:07.592Z",
+          "completed_at": "2026-10-19T12:52:07.592Z"
+        },
+        {
+          "id": "handoff-1-turn-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_bd8c75e4684e4ded85b7b4d245ec2dbb",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_bd8c75e4684e4ded85b7b4d245ec2dbb",
+              "output_preview": "{\"token\": \"b9c7b4bf92f2a277\", \"qty\": 1, \"unit_cents\": 714}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:09.641Z",
+          "usage": {
+            "input_tokens": 356,
+            "output_tokens": 78,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19200
+          },
+          "duration_ms": 2661,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:52:10.253Z"
+        },
+        {
+          "id": "handoff-1-turn-4",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:12.020Z",
+          "usage": {
+            "input_tokens": 360,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19328
+          },
+          "duration_ms": 1767,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:52:12.020Z"
+        }
+      ],
+      "input": {
+        "token": "b9c7b4bf92f2a277",
+        "qty": 1,
+        "unit_cents": 714
+      },
+      "expected": {
+        "token": "b9c7b4bf92f2a277",
+        "subtotal_cents": 714,
+        "shipping_cents": 175,
+        "total_cents": 889
+      },
+      "switch_seconds": 6.819,
+      "receiver_turns": [
+        {
+          "id": "handoff-2-acp-0",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:23.431Z"
+        },
+        {
+          "id": "handoff-2-acp-1",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I've added a token with a quantity of 1 and a unit price of 714 cents, bringing the subtotal to 714. Since this is less than 3000, the shipping cost is 175, making the total 889. I need to reply with a JSON object."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"b9c7b4bf92f2a277\",\"subtotal_cents\":714,\"shipping_cents\":175,\"total_cents\":889}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:23.431Z",
+          "duration_ms": 3873,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:52:27.307Z"
+        }
+      ],
+      "answer": "{\"token\":\"b9c7b4bf92f2a277\",\"subtotal_cents\":714,\"shipping_cents\":175,\"total_cents\":889}"
+    },
+    {
+      "round": 5,
+      "edge": 3,
+      "from": "custom:devin",
+      "to": "claude_code",
+      "conversation": 17,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-2-acp-2",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:30.616Z"
+        },
+        {
+          "id": "handoff-2-acp-3",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I'm running the command now."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#b562b9b122c1441bab842366b2dbf61a",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#b562b9b122c1441bab842366b2dbf61a",
+              "output_preview": "{\"token\": \"43bceb9aa7dced93\", \"qty\": 6, \"unit_cents\": 458}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "The agent is confirming completion of the task."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:30.616Z",
+          "duration_ms": 4622,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:52:35.239Z"
+        }
+      ],
+      "input": {
+        "token": "43bceb9aa7dced93",
+        "qty": 6,
+        "unit_cents": 458
+      },
+      "expected": {
+        "token": "43bceb9aa7dced93",
+        "subtotal_cents": 2748,
+        "shipping_cents": 175,
+        "total_cents": 2923
+      },
+      "switch_seconds": 3.513,
+      "receiver_turns": [
+        {
+          "id": "handoff-3-turn-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:42.653Z",
+          "completed_at": "2026-10-19T12:52:42.653Z"
+        },
+        {
+          "id": "handoff-3-turn-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:52.561Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 1783,
+            "cache_creation_input_tokens": 2108,
+            "cache_read_input_tokens": 29369
+          },
+          "duration_ms": 9908,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:52:52.561Z",
+          "agent_message_id": "msg_011CgBdNF4VnQUERMQQ5wuk8"
+        },
+        {
+          "id": "handoff-3-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"43bceb9aa7dced93\",\"subtotal_cents\":2748,\"shipping_cents\":175,\"total_cents\":2923}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:52.612Z",
+          "duration_ms": 10104,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:52:52.612Z",
+          "agent_message_id": "msg_011CgBdNF4VnQUERMQQ5wuk8"
+        }
+      ],
+      "answer": "\n{\"token\":\"43bceb9aa7dced93\",\"subtotal_cents\":2748,\"shipping_cents\":175,\"total_cents\":2923}"
+    },
+    {
+      "round": 5,
+      "edge": 4,
+      "from": "claude_code",
+      "to": "custom:devin",
+      "conversation": 17,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-3-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:56.301Z",
+          "completed_at": "2026-10-19T12:52:56.301Z"
+        },
+        {
+          "id": "handoff-3-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:59.003Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 449,
+            "cache_creation_input_tokens": 241,
+            "cache_read_input_tokens": 33260
+          },
+          "duration_ms": 2702,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:52:59.003Z",
+          "agent_message_id": "msg_011CgBdPEHPpWrFRgEU3iNZT"
+        },
+        {
+          "id": "handoff-3-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "toolu_01FH4ZkcgUXEuk9d6i3NYc98",
+              "tool_name": "Bash",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\",\"description\":\"Generate this case's settlement input\"}"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_01FH4ZkcgUXEuk9d6i3NYc98",
+              "output_preview": "{\"token\": \"9f82cd2a15124610\", \"qty\": 8, \"unit_cents\": 732}",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:52:59.569Z",
+          "duration_ms": 1967,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:53:00.970Z",
+          "agent_message_id": "msg_011CgBdPEHPpWrFRgEU3iNZT"
+        },
+        {
+          "id": "handoff-3-turn-10",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:02.318Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 511,
+            "cache_read_input_tokens": 33501
+          },
+          "duration_ms": 5592,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:53:02.318Z",
+          "agent_message_id": "msg_011CgBdPa1ZMP8cwvaWEvx9R"
+        }
+      ],
+      "input": {
+        "token": "9f82cd2a15124610",
+        "qty": 8,
+        "unit_cents": 732
+      },
+      "expected": {
+        "token": "9f82cd2a15124610",
+        "subtotal_cents": 5856,
+        "shipping_cents": 0,
+        "total_cents": 5856
+      },
+      "switch_seconds": 6.61,
+      "receiver_turns": [
+        {
+          "id": "handoff-4-acp-4",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Continue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:12.157Z"
+        },
+        {
+          "id": "handoff-4-acp-5",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "The input indicates a quantity of 8 items at 732 cents each, totaling 5856 cents. Since this subtotal is greater than 3000, shipping is free, making the final total 5856 cents. This seems correct."
+            },
+            {
+              "type": "text",
+              "text": "{\"token\":\"9f82cd2a15124610\",\"subtotal_cents\":5856,\"shipping_cents\":0,\"total_cents\":5856}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:12.157Z",
+          "duration_ms": 2206,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:53:14.365Z"
+        }
+      ],
+      "answer": "{\"token\":\"9f82cd2a15124610\",\"subtotal_cents\":5856,\"shipping_cents\":0,\"total_cents\":5856}"
+    },
+    {
+      "round": 5,
+      "edge": 5,
+      "from": "custom:devin",
+      "to": "codex",
+      "conversation": 17,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-4-acp-6",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:17.583Z"
+        },
+        {
+          "id": "handoff-4-acp-7",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": "I'm running the command now and will reply DONE."
+            },
+            {
+              "type": "tool_use",
+              "tool_use_id": "exec:0#780b1538bb0e4815aaf3c3c393460c62",
+              "tool_name": "Ran python3",
+              "input_preview": "{\"command\":\"python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'\"}",
+              "status": "completed",
+              "meta": {
+                "cognition.ai/inferenceToolName": "exec"
+              }
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "exec:0#780b1538bb0e4815aaf3c3c393460c62",
+              "output_preview": "{\"token\": \"b2734ecf8ff0e522\", \"qty\": 4, \"unit_cents\": 547}\n[terminal exited: exit code: 0]",
+              "is_error": false
+            },
+            {
+              "type": "thinking",
+              "text": "I've completed the task."
+            },
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:17.583Z",
+          "duration_ms": 5345,
+          "model": "swe-2-high",
+          "completed_at": "2026-10-19T12:53:22.929Z"
+        }
+      ],
+      "input": {
+        "token": "b2734ecf8ff0e522",
+        "qty": 4,
+        "unit_cents": 547
+      },
+      "expected": {
+        "token": "b2734ecf8ff0e522",
+        "subtotal_cents": 2188,
+        "shipping_cents": 175,
+        "total_cents": 2363
+      },
+      "switch_seconds": 3.203,
+      "receiver_turns": [
+        {
+          "id": "handoff-5-turn-5",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:36.128Z",
+          "completed_at": "2026-10-19T12:53:36.128Z"
+        },
+        {
+          "id": "handoff-5-turn-6",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"b2734ecf8ff0e522\",\"subtotal_cents\":2188,\"shipping_cents\":175,\"total_cents\":2363}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:38.995Z",
+          "usage": {
+            "input_tokens": 2485,
+            "output_tokens": 38,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 19456
+          },
+          "duration_ms": 2867,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:53:38.995Z"
+        }
+      ],
+      "answer": "{\"token\":\"b2734ecf8ff0e522\",\"subtotal_cents\":2188,\"shipping_cents\":175,\"total_cents\":2363}"
+    },
+    {
+      "round": 5,
+      "edge": 6,
+      "from": "codex",
+      "to": "claude_code",
+      "conversation": 17,
+      "success": true,
+      "producer_turns": [
+        {
+          "id": "handoff-5-turn-7",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Settlement task. The rule is subtotal_cents = qty * unit_cents; shipping_cents = 175 if subtotal_cents < 3000 else 0; total_cents = subtotal_cents + shipping_cents. Run exactly this command to obtain this case's input: `python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'`. Do not write files. Your final reply must be exactly DONE; do not repeat the generated input or token. The next agent will finish the calculation."
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:42.670Z",
+          "completed_at": "2026-10-19T12:53:42.670Z"
+        },
+        {
+          "id": "handoff-5-turn-8",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool_use",
+              "tool_use_id": "call_961490d90aaf4e1fa6fe8336195098a1",
+              "tool_name": "exec_command",
+              "input_preview": "python3 -c 'import secrets,json; print(json.dumps(dict(token=secrets.token_hex(8),qty=secrets.randbelow(8)+1,unit_cents=secrets.randbelow(900)+101)))'"
+            },
+            {
+              "type": "tool_result",
+              "tool_use_id": "call_961490d90aaf4e1fa6fe8336195098a1",
+              "output_preview": "{\"token\": \"2689bb1e679ae7da\", \"qty\": 2, \"unit_cents\": 921}\n",
+              "is_error": false
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:44.237Z",
+          "usage": {
+            "input_tokens": 361,
+            "output_tokens": 78,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 21760
+          },
+          "duration_ms": 3065,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:53:45.735Z"
+        },
+        {
+          "id": "handoff-5-turn-9",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "DONE"
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:46.863Z",
+          "usage": {
+            "input_tokens": 362,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 21888
+          },
+          "duration_ms": 1128,
+          "model": "gpt-6-luna",
+          "completed_at": "2026-10-19T12:53:46.863Z"
+        }
+      ],
+      "input": {
+        "token": "2689bb1e679ae7da",
+        "qty": 2,
+        "unit_cents": 921
+      },
+      "expected": {
+        "token": "2689bb1e679ae7da",
+        "subtotal_cents": 1842,
+        "shipping_cents": 175,
+        "total_cents": 2017
+      },
+      "switch_seconds": 5.618,
+      "receiver_turns": [
+        {
+          "id": "handoff-6-turn-11",
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "\n\nContinue the previous agent's settlement task. Use the latest generated tool-result input and the rule already in the conversation. Reply with exactly one JSON object with keys token, subtotal_cents, shipping_cents, total_cents. Do not call any tools or read any files."
+            }
+          ],
+          "timestamp": "2026-10-19T12:53:57.941Z",
+          "completed_at": "2026-10-19T12:53:57.941Z"
+        },
+        {
+          "id": "handoff-6-turn-12",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "thinking",
+              "text": ""
+            }
+          ],
+          "timestamp": "2026-10-19T12:54:02.001Z",
+          "usage": {
+            "input_tokens": 2,
+            "output_tokens": 411,
+            "cache_creation_input_tokens": 3996,
+            "cache_read_input_tokens": 34017
+          },
+          "duration_ms": 4060,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:54:02.001Z",
+          "agent_message_id": "msg_011CgBdTrXb6RqaExZim2HNx"
+        },
+        {
+          "id": "handoff-6-turn-13",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "{\"token\":\"2689bb1e679ae7da\",\"subtotal_cents\":1842,\"shipping_cents\":175,\"total_cents\":2017}"
+            }
+          ],
+          "timestamp": "2026-10-19T12:54:02.134Z",
+          "duration_ms": 4607,
+          "model": "claude-haiku-5-5",
+          "completed_at": "2026-10-19T12:54:02.134Z",
+          "agent_message_id": "msg_011CgBdTrXb6RqaExZim2HNx"
+        }
+      ],
+      "answer": "\n{\"token\":\"2689bb1e679ae7da\",\"subtotal_cents\":1842,\"shipping_cents\":175,\"total_cents\":2017}"
+    }
+  ],
+  "connections": [
+    "66fe567d-56b5-42d7-8c14-5118f03192bd",
+    "10abdb1b-4697-420b-a808-b28a9a96c0d1",
+    "0d34cf7c-0d3b-4245-a244-b627d915b11e",
+    "c0bec6f2-a75d-4fcc-844e-6e39be26cd63",
+    "0e0a1fda-1fed-41f4-b772-36cf30aa1156",
+    "cabc1738-64b1-4135-bf84-634bb65e03d8",
+    "e29edaae-8da5-4d96-8600-e89327d0ba6b",
+    "f2f3f5f0-9844-44cf-876c-0153be943deb",
+    "ba37338c-06c2-490c-8834-d512b4016eb6",
+    "640e8136-176c-4e5f-908e-be1fb8311fd0",
+    "bbd87103-4215-4328-8223-3c70e6224fd6",
+    "9bffe3ed-3738-4c7e-b9d5-203ecbbe3bcd",
+    "421a8ad6-ab44-4a03-8b16-7164fca65bc6",
+    "831c8176-957b-4e4a-b392-88f968032e82",
+    "028ca2c7-2cf4-44b2-b648-5fcb856cc7f6",
+    "c07af393-2228-4399-a28c-a319ed79303a",
+    "e05814c8-3856-4a72-99ac-4e0c9f0aa030",
+    "52e3ec44-d662-4e5c-9c7a-1b17d4af8fe2",
+    "ea0cc0ee-ed9e-45cf-a722-f5a263a23c41",
+    "6450613c-74ba-4a17-822b-03d960aa58a3",
+    "d7133d0f-153d-43c5-87f7-1fc058381e75",
+    "49fba571-4a48-468e-887c-882e94abe0f2",
+    "c3d88213-ff36-4193-a790-0bfd1f67372b",
+    "c44522cf-e099-4ad4-babf-d485706c5251",
+    "4d1da672-fde7-4b17-8fa5-8b59c8ab1aaa",
+    "92aa0654-0c27-496e-9502-fd76704678ee",
+    "e7e5eda4-3d3a-463b-a9d8-5a9c413c13fe",
+    "b2179b6a-73ca-44e5-b911-0fff787ea3e6",
+    "ee7c6b10-cf1f-4700-9e78-97455b6f281f",
+    "d16cfe05-a716-476c-83fa-abf035b037b5",
+    "44b1b160-b6c6-4015-b76f-2b82d7031974",
+    "40875b4d-70fb-4b66-b8cd-eb13fd8d35ad",
+    "368555cd-3a41-4d65-b308-c0644c11cb08",
+    "5f6e7582-c2c9-4552-be9e-bcbd730b25ad",
+    "7fb36830-193b-46cd-9f7d-18266c543548"
+  ],
+  "status": "completed",
+  "folder_id": 6,
+  "conversations": [
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "passed": 27,
+  "attempted": 30,
+  "success_rate": 0.9,
+  "ended_at": "2026-10-19T20:54:05+0800"
+}

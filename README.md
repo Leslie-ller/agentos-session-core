@@ -76,7 +76,7 @@ cargo test --manifest-path src-tauri/Cargo.toml \
 
 ## 实测：任务接续
 
-2026-10-19 用真实模型测了 30 次跨 Agent 接续，**成功 27 次（90%）**。记录在 [`eval/handoff-30`](eval/handoff-30)。
+2026-10-31 用真实模型测了 30 次跨 Agent 接续，**成功 29 次**。记录在 [`eval/handoff-30/measurement`](eval/handoff-30/measurement)。
 
 - 任务：前一个 Agent 运行命令生成随机输入（随机标识、数量、单价），回复里不复述；切换后，后一个 Agent 不调用工具，只凭交接上下文按规则算出小计、运费和总额。
 - 覆盖：Claude Code（claude-haiku-5-5）、Codex（gpt-6-luna）、Devin（swe-2-high）之间的 6 个切换方向，每个方向 5 次；每轮新开一条对话，依次走完 6 次切换。
@@ -85,13 +85,15 @@ cargo test --manifest-path src-tauri/Cargo.toml \
 | 切换方向 | 成功 |
 | --- | --- |
 | Claude Code → Codex | 5/5 |
-| Codex → Devin | 5/5 |
-| Devin → Claude Code | 4/5 |
+| Codex → Devin | 4/5 |
+| Devin → Claude Code | 5/5 |
 | Claude Code → Devin | 5/5 |
 | Devin → Codex | 5/5 |
-| Codex → Claude Code | 3/5 |
+| Codex → Claude Code | 5/5 |
 
-3 次失败都发生在切到 Claude Code 时：它认为交接过来的历史不是本会话产生的，拒绝采用其中的输入（见 `failures.json`）。这是单一类型任务上的小样本结果，不代表任意任务的成功率。`results.json` 中的对话是这次测试自动生成的，不含个人数据。
+唯一一次失败发生在切换之前：Codex 没有运行生成输入的命令就回复了 `DONE`，按规则照样记为失败（见 `failures.json`）。切换耗时中位数 1.4 秒。这是单一类型任务上的小样本结果，不代表任意任务的成功率。`results.json` 中的对话是这次测试自动生成的，不含个人数据。
+
+这次测的是 AgentOS 开发版（2026-10-30 的提交），包含 10-19 之后对交接的改进：交接内容与用户消息分开发送、每条回复标明来源 Agent、长对话先由离开的 Agent 写交接摘要。这些改进尚未同步到本仓库的 overlay。本仓库当前代码的结果是 2026-10-19 的 27/30，记录保留在 [`measurement-2026-10-19`](eval/handoff-30/measurement-2026-10-19)。
 
 重跑需要一个运行中的 AgentOS 服务和三个 Agent 的登录环境：
 

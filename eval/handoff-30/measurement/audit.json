@@ -2,19 +2,19 @@
   "status": "completed",
   "planned": 30,
   "attempted": 30,
-  "passed": 27,
-  "rate": 0.9,
+  "passed": 29,
+  "rate": 0.9666666666666667,
   "by_direction": {
     "claude_code -> codex": {
       "passed": 5,
       "attempted": 5
     },
     "codex -> custom:devin": {
-      "passed": 5,
+      "passed": 4,
       "attempted": 5
     },
     "custom:devin -> claude_code": {
-      "passed": 4,
+      "passed": 5,
       "attempted": 5
     },
     "claude_code -> custom:devin": {
@@ -26,7 +26,7 @@
       "attempted": 5
     },
     "codex -> claude_code": {
-      "passed": 3,
+      "passed": 5,
       "attempted": 5
     }
   },
@@ -140,8 +140,8 @@
       "edge": 2,
       "source": "codex",
       "target": "custom:devin",
-      "success": true,
-      "reason": null
+      "success": false,
+      "reason": "expected exactly one generated tool-result input; got 0"
     },
     {
       "round": 3,
@@ -172,8 +172,8 @@
       "edge": 6,
       "source": "codex",
       "target": "claude_code",
-      "success": false,
-      "reason": "receiver JSON did not exactly match expected result"
+      "success": true,
+      "reason": null
     },
     {
       "round": 4,
@@ -196,8 +196,8 @@
       "edge": 3,
       "source": "custom:devin",
       "target": "claude_code",
-      "success": false,
-      "reason": "receiver JSON did not exactly match expected result"
+      "success": true,
+      "reason": null
     },
     {
       "round": 4,
@@ -220,8 +220,8 @@
       "edge": 6,
       "source": "codex",
       "target": "claude_code",
-      "success": false,
-      "reason": "receiver JSON did not exactly match expected result"
+      "success": true,
+      "reason": null
     },
     {
       "round": 5,
@@ -272,6 +272,6 @@
       "reason": null
     }
   ],
-  "unique_inputs": 30,
-  "results_sha256": "324e60976480bc9ce877cd350a8c5aa3602bddcc930cccb79d7c9b94a897f0ad"
+  "unique_inputs": 29,
+  "results_sha256": "a8872aa09989b6f378483e5d4ee8ee41e595f7814ce033fffc958f50d451fe08"
 }
